@@ -5,7 +5,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
-
+from lunar_sites import SITES
 
 # 2. EDIT THESE SETTINGS
 # Dates are UTC, in YYYY-MM-DD HH:MM format.
@@ -19,17 +19,8 @@ OUTPUT_FOLDER = Path("lunar_results2")   # Change this to keep a separate run.
 # 3. THE NINE LUNAR POINTS
 # Each line gives: name, east longitude, latitude (angles in degrees).
 # Negative longitude means west; negative latitude means south.
-SITES = [
-    ("Peak near Cabeus B", -69.014, -83.661),
-    ("Haworth", -22.836, -86.753),
-    ("Malapert Massif", -0.125, -85.990),
-    ("Mons Mouton Plateau", 29.926, -84.232),
-    ("Mons Mouton", 31.586, -85.423),
-    ("Nobile Rim 1", 37.241, -85.431),
-    ("Nobile Rim 2", 58.654, -83.963),
-    ("de Gerlache Rim 2", -65.421, -88.225),
-    ("Slater Plain", 126.134, -87.149),
-]
+# SITES is loaded from lunar_sites.py by the import at the top.
+    
 TARGETS = [("Earth", "399"), ("Sun", "10")]  # JPL's body codes.
 
 CSV_HEADER = [
