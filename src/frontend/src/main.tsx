@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { ForecastArticle } from "./ForecastArticle";
 import { Chrome } from "./Chrome";
 import { LunarScene, type Station, type View } from "./LunarScene";
+import { ScenePlayer } from "./ScenePlayer";
+import { OrbitScene } from "./OrbitScene";
 import { OrbitBackdrop } from "./NoiseBackground";
+import { GlassCalendar } from "./components/ui/glass-calendar";
 import { OptionWheel } from "./OptionWheel";
 import { SpecularButton } from "./SpecularButton";
-import { OrbitSymbol, SurfaceSymbol } from "./Symbols";
+import { PlannerSymbol, OrbitSymbol, SurfaceSymbol } from "./Symbols";
 import GooeyNav from "./reactbits/GooeyNav";
 import { stations, type Body } from "./model";
 import {
@@ -56,7 +60,7 @@ type Result =
   { key: string; visibility: Visibility } | { key: string; error: string };
 
 function App() {
-  const [view, setView] = useState<View>("orbit");
+  const [view, setView] = useState<View>("planner");
   const [backgroundMotion, setBackgroundMotion] = useState(
     () => !matchMedia(reducedMotionQuery).matches,
   );
@@ -121,13 +125,13 @@ function App() {
     return () => controller.abort();
   }, [lat, lon, base, key]);
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || view === "planner") return;
     const timer = window.setInterval(
       () => setOffset((value) => Math.min(WINDOW_HOURS, value + 0.15)),
       250,
     );
     return () => clearInterval(timer);
-  }, [playing]);
+  }, [playing, view]);
   useEffect(() => {
     if (offset >= WINDOW_HOURS) setPlaying(false);
   }, [offset]);
@@ -146,9 +150,18 @@ function App() {
     setOffset(0);
     setPlaying(false);
   };
+  const togglePlay = () => {
+    if (offset >= WINDOW_HOURS) setOffset(0);
+    setPlaying(!playing);
+  };
   const descend = () => {
     if (!form.current?.reportValidity()) return;
-    commit(preset, Number(latitude), Number(longitude), date);
+    if (
+      Number(latitude) !== lat ||
+      Number(longitude) !== lon ||
+      Date.parse(date + "Z") !== base
+    )
+      commit(preset, Number(latitude), Number(longitude), date);
     setView("surface");
   };
   const selectPreset = (selected: string) => {
@@ -157,8 +170,7 @@ function App() {
     if (!next) return;
     setLat(String(next.latitude));
     setLon(String(next.longitude));
-    const validDate =
-      form.current?.querySelector<HTMLInputElement>("#date")?.validity.valid;
+    const validDate = Number.isFinite(Date.parse(date + "Z"));
     commit(
       selected,
       next.latitude,
@@ -168,42 +180,85 @@ function App() {
   };
   return (
     <Chrome
+      navigation={
+        <GooeyNav
+          items={[
+            { label: "Planner", icon: <PlannerSymbol /> },
+            { label: "Orbit", icon: <OrbitSymbol /> },
+            { label: "Surface", icon: <SurfaceSymbol /> },
+          ]}
+          activeIndex={["planner", "orbit", "surface"].indexOf(view)}
+          onChange={(index) => {
+            if (index === 0) setView("planner");
+            else if (index === 1) setView("orbit");
+            else if (view !== "surface") descend();
+          }}
+          theme="dark"
+          size="md"
+          frame
+          color="#eddfa8"
+          activeTextColor="#16181c"
+          particleCount={15}
+          spread={56}
+          animationTime={450}
+          timeVariance={300}
+          gooeyness={0.5}
+          wobble={0.5}
+          hoverEffect
+          className="view-navigation"
+        />
+      }
       motion={backgroundMotion}
       onToggleMotion={() => setBackgroundMotion((motion) => !motion)}
     >
-      <section
-        id="explore"
-        ref={explore}
-        className={`explore${view === "surface" ? " surface-mode" : ""}`}
-      >
-        {view === "orbit" && <OrbitBackdrop motion={backgroundMotion} />}
-        <LunarScene
-          view={view}
-          lat={site.lat}
-          lon={site.lon}
-          time={time}
-          directions={data}
-          station={station}
-          command={command}
-          onFacing={setFacing}
-          onPick={(lat, lon) => {
-            const pickedLat = lat.toFixed(4),
-              pickedLon = lon.toFixed(4);
-            setPreset("");
-            setLat(pickedLat);
-            setLon(pickedLon);
-            const validDate =
-              form.current?.querySelector<HTMLInputElement>("#date")?.validity
-                .valid;
-            commit(
-              "",
-              Number(pickedLat),
-              Number(pickedLon),
-              validDate ? date : new Date(site.base).toISOString().slice(0, 16),
-            );
-          }}
-        />
-        <div className="hero-copy" hidden={view !== "orbit"}>
+      <section id="explore" ref={explore} className={`explore ${view}-mode`}>
+        {view === "planner" && <OrbitBackdrop motion={backgroundMotion} />}
+        {view === "orbit" ? (
+          <OrbitScene
+            resetCommand={command}
+            lat={site.lat}
+            lon={site.lon}
+            time={time}
+            directions={data}
+            visibility={visibility}
+            error={error}
+            offset={offset}
+            playing={playing}
+            onOffset={setOffset}
+            onTogglePlay={() => {
+              if (offset >= WINDOW_HOURS) setOffset(0);
+              setPlaying(!playing);
+            }}
+          />
+        ) : (
+          <LunarScene
+            view={view}
+            lat={site.lat}
+            lon={site.lon}
+            time={time}
+            directions={data}
+            station={station}
+            command={command}
+            onFacing={setFacing}
+            onPick={(lat, lon) => {
+              const pickedLat = lat.toFixed(4),
+                pickedLon = lon.toFixed(4);
+              setPreset("");
+              setLat(pickedLat);
+              setLon(pickedLon);
+              const validDate = Number.isFinite(Date.parse(date + "Z"));
+              commit(
+                "",
+                Number(pickedLat),
+                Number(pickedLon),
+                validDate
+                  ? date
+                  : new Date(site.base).toISOString().slice(0, 16),
+              );
+            }}
+          />
+        )}
+        <div className="hero-copy" hidden={view !== "planner"}>
           <h1>
             See the Moon.
             <br />
@@ -213,41 +268,16 @@ function App() {
             Choose a landing site to see when sunlight and Earth are visible.
           </p>
         </div>
-        <div className="scene-toolbar">
-          <GooeyNav
-            items={[
-              { label: "Orbit", icon: <OrbitSymbol /> },
-              { label: "Surface", icon: <SurfaceSymbol /> },
-            ]}
-            activeIndex={view === "orbit" ? 0 : 1}
-            onChange={(index) => {
-              if (index === 0) setView("orbit");
-              else if (view === "orbit") descend();
-            }}
-            size="sm"
-            color="#eddfa8"
-            activeTextColor="#16181c"
-            particleCount={10}
-            animationTime={560}
-            className="view-navigation"
-          />
-          <SpecularButton
-            className="round-button"
-            aria-label="Reset camera view"
-            onClick={() => setCommand({ target: "reset" })}
-          >
-            ↺
-          </SpecularButton>
-        </div>
-        <aside className="site-panel frosted-panel" hidden={view !== "orbit"}>
-          <div className="panel-heading">
-            <span className="eyebrow">YOUR LANDING SITE</span>
-          </div>
+
+        <aside
+          className="site-panel planner-controls"
+          hidden={view !== "planner"}
+        >
           <OptionWheel
             label="Landing site preset"
             value={preset}
             options={[
-              { value: "", label: "Custom coordinates" },
+              { value: "", label: "Custom landing site" },
               ...sites.map(({ name }) => ({ value: name, label: name })),
             ]}
             onChange={selectPreset}
@@ -283,63 +313,15 @@ function App() {
               });
             }}
           >
-            <div className="coordinate-grid">
-              <label>
-                Latitude <span>° N</span>
-                <input
-                  id="latitude"
-                  type="number"
-                  min="-90"
-                  max="90"
-                  step="any"
-                  value={latitude}
-                  onChange={(event) => {
-                    setPreset("");
-                    setLat(event.currentTarget.value);
-                  }}
-                  required
-                />
-              </label>
-              <label>
-                Longitude <span>° E</span>
-                <input
-                  id="longitude"
-                  type="number"
-                  min="-180"
-                  max="180"
-                  step="any"
-                  value={longitude}
-                  onChange={(event) => {
-                    setPreset("");
-                    setLon(event.currentTarget.value);
-                  }}
-                  required
-                />
-              </label>
-            </div>
-            <label className="date-label">
-              Landing date &amp; time <span>UTC</span>
-              <input
-                id="date"
-                type="datetime-local"
-                value={date}
-                min="2000-01-01T00:00"
-                max="2100-12-31T23:59"
-                onChange={(event) => {
-                  setDate(event.currentTarget.value);
-                  if (form.current?.checkValidity())
-                    commit(
-                      preset,
-                      Number(latitude),
-                      Number(longitude),
-                      event.currentTarget.value,
-                    );
-                }}
-                required
-              />
-            </label>
+            <GlassCalendar
+              value={date}
+              onChange={(nextDate) => {
+                setDate(nextDate);
+                commit(preset, Number(latitude), Number(longitude), nextDate);
+              }}
+            />
             <SpecularButton type="submit" className="primary-button">
-              Take me to the surface <span>↗</span>
+              Take me to the surface
             </SpecularButton>
           </form>
           <div className="panel-footer">
@@ -349,7 +331,10 @@ function App() {
         <div className="surface-heading" hidden={view !== "surface"}>
           <span className="eyebrow">YOU ARE HERE</span>
           <h1>{site.name}</h1>
-          <p>Drag to look around · Sun and Earth sizes exaggerated</p>
+          <p>
+            Drag to look around · Shift + scroll to zoom · Sun and Earth sizes
+            exaggerated
+          </p>
           <div className="look-buttons">
             {bodies.map((body) => (
               <SpecularButton
@@ -357,16 +342,33 @@ function App() {
                 disabled={!data}
                 onClick={() => setCommand({ target: body })}
               >
-                Look at {names[body]} ↗
+                Look at {names[body]}
               </SpecularButton>
             ))}
           </div>
         </div>
-        <a className="scroll-cue" href="#windows">
+        {view === "surface" && (
+          <ScenePlayer
+            time={time}
+            offset={offset}
+            playing={playing}
+            disabled={!data}
+            onOffset={setOffset}
+            onTogglePlay={togglePlay}
+            className="surface-player"
+            note={
+              error ??
+              (data
+                ? "Shared with Orbit · Explore the next 72 hours from your landing site"
+                : "Calculating the 72-hour visibility window…")
+            }
+          />
+        )}
+        <a className="scroll-cue" href="#windows" hidden={view === "planner"}>
           YOUR NEXT WINDOWS <span>↓</span>
         </a>
       </section>
-      <section className="windows" id="windows">
+      <section className="windows" id="windows" hidden={view === "planner"}>
         <div className="section-intro">
           <h2>
             Your horizon.
@@ -400,40 +402,6 @@ function App() {
           </div>
         ) : (
           <>
-            <div className="time-console frosted-panel">
-              <div>
-                <span className="eyebrow">SCENE TIME / UTC</span>
-                <strong>{formatter.format(time)}</strong>
-              </div>
-              <div className="scrubber">
-                <label htmlFor="time-slider">
-                  Explore after landing{" "}
-                  <output>+{Number(offset.toFixed(2))} h</output>
-                </label>
-                <input
-                  id="time-slider"
-                  type="range"
-                  min="0"
-                  max={WINDOW_HOURS}
-                  step=".25"
-                  value={offset}
-                  onChange={(event) =>
-                    setOffset(event.currentTarget.valueAsNumber)
-                  }
-                />
-                <div className="ticks">{ticks}</div>
-              </div>
-              <SpecularButton
-                className="play-button"
-                aria-pressed={playing}
-                onClick={() => {
-                  if (offset >= WINDOW_HOURS) setOffset(0);
-                  setPlaying(!playing);
-                }}
-              >
-                {playing ? "Ⅱ Pause" : "▶ Play"}
-              </SpecularButton>
-            </div>
             <div className="event-grid">
               {bodies.map((body, index) => {
                 const crossing = windows[index].crossings.find(
@@ -449,7 +417,7 @@ function App() {
                     : Math.round((eventTime - time) / 60_000);
                 const position = data[body];
                 return (
-                  <article key={body}>
+                  <ForecastArticle key={body}>
                     <div className="event-top">
                       <span className={`body-icon ${body}-icon`}>
                         {body === "sun" ? "☀" : "◉"}
@@ -488,10 +456,10 @@ function App() {
                         <b>{position.horizonElevationDeg.toFixed(1)}°</b>
                       </span>
                     </div>
-                  </article>
+                  </ForecastArticle>
                 );
               })}
-              <article className="station-card">
+              <ForecastArticle className="station-card">
                 <div className="event-top">
                   <span className="body-icon">⌁</span>
                   <span className="eyebrow">GROUND STATION</span>
@@ -531,7 +499,7 @@ function App() {
                   Station orientation is illustrative. Radio-link availability
                   requires separate analysis.
                 </small>
-              </article>
+              </ForecastArticle>
             </div>
             <div className="timeline-heading">
               <h3>Visibility over the next 72 hours</h3>

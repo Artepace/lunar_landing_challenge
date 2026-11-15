@@ -8,15 +8,16 @@ import {
   loadTopographicMoon,
   spherical,
 } from "./sceneObjects";
+import { siteCameraFrame } from "./siteCameraFrame";
 import { orbitDistance } from "./orbitFraming";
 import { surfaceRocks } from "./surfaceDetails";
 import { unpackSurfaceMesh } from "./surfaceTerrain";
 import { loadTerrain, type SceneDirections } from "./visibility";
 
 export type Station = keyof typeof stations;
-export type View = "orbit" | "surface";
+export type View = "planner" | "orbit" | "surface";
 type Props = {
-  view: View;
+  view: Exclude<View, "orbit">;
   lat: number;
   lon: number;
   time: number;
@@ -42,6 +43,8 @@ export function LunarScene(props: Props) {
   const siteLabel = useRef<HTMLDivElement>(null);
   const sunLabel = useRef<HTMLDivElement>(null);
   const earthLabel = useRef<HTMLDivElement>(null);
+  const hiddenSun = useRef<HTMLDivElement>(null);
+  const hiddenEarth = useRef<HTMLDivElement>(null);
   const stationLabel = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   const [message, setMessage] = useState("Preparing the Moon…");
@@ -78,7 +81,7 @@ export function LunarScene(props: Props) {
     container.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 1500);
-    const controls = new OrbitControls(camera, renderer.domElement);
+    let controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.enablePan = false;
     controls.enableZoom = false;
@@ -110,7 +113,7 @@ export function LunarScene(props: Props) {
         if (!disposed) setMessage(error);
       },
     );
-    let mode: View = "orbit";
+    let mode: View = "planner";
     let rocks: THREE.Group | null = null;
     const previewTerrain = terrain.geometry;
     const previewBumpScale = terrain.material.bumpScale;
@@ -149,6 +152,7 @@ export function LunarScene(props: Props) {
       else marker.position.copy(outward).multiplyScalar(2.015);
     };
     const reset = () => {
+      camera.fov = 42;
       camera.near = 0.01;
       camera.updateProjectionMatrix();
       const distance = orbitDistance(
@@ -156,13 +160,25 @@ export function LunarScene(props: Props) {
         container.clientHeight,
       );
       controls.minDistance = controls.maxDistance = distance;
-      camera.position.set(5, 1.1, 7.8).normalize().multiplyScalar(distance);
+      const frame = siteCameraFrame(lastData.lat, lastData.lon);
+      camera.up.fromArray(frame.up);
+      camera.position.fromArray(frame.direction).multiplyScalar(distance);
+      // OrbitControls caches the camera-up frame at construction.
+      controls.dispose();
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.enablePan = false;
+      controls.enableZoom = false;
+      controls.minDistance = controls.maxDistance = distance;
+      controls.addEventListener("change", () => {
+        needsRender = true;
+      });
       controls.target.set(0, 0, 0);
       controls.update();
     };
     const look = (body: Body) => {
       yaw = data?.[body].azimuthDeg ?? 0;
-      pitch = Math.max(-17, data?.[body].elevationDeg ?? 0);
+      pitch = Math.max(-80, Math.min(74, data?.[body].elevationDeg ?? 0));
     };
     const syncObjects = () => {
       data = lastData.directions;
@@ -215,6 +231,7 @@ export function LunarScene(props: Props) {
       lastData.onFacing(facing);
     };
     const setSurfaceCamera = () => {
+      camera.up.set(0, 1, 0);
       camera.position.set(0, eyeHeight, 0);
       camera.near = terrain.geometry === previewTerrain ? 0.01 : 0.00025;
       camera.updateProjectionMatrix();
@@ -269,7 +286,7 @@ export function LunarScene(props: Props) {
       if (!width || !height) return;
       renderer.setSize(width, height);
       camera.aspect = width / height;
-      if (mode === "orbit") {
+      if (mode === "planner") {
         const distance = orbitDistance(width, height);
         controls.minDistance = controls.maxDistance = distance;
         camera.position.normalize().multiplyScalar(distance);
@@ -301,6 +318,7 @@ export function LunarScene(props: Props) {
       object: THREE.Object3D,
       show: boolean,
       lift = 10,
+      horizontalGap = 12,
     ) => {
       if (!label) return;
       label.style.display = "none";
@@ -320,8 +338,44 @@ export function LunarScene(props: Props) {
       )
         return;
       label.style.display = "block";
-      label.style.left = `${Math.min(container.offsetLeft + x + 12, container.offsetLeft + container.clientWidth - label.offsetWidth - 8)}px`;
-      label.style.top = `${container.offsetTop + y - lift}px`;
+      // The planner canvas is translated vertically in CSS. Layout offsets
+      // omit that transform, so anchor labels to its rendered rectangle.
+      const bounds = container.getBoundingClientRect();
+      const parentBounds = label.offsetParent?.getBoundingClientRect();
+      const left = bounds.left - (parentBounds?.left ?? 0);
+      const top = bounds.top - (parentBounds?.top ?? 0);
+      label.style.left = `${Math.min(left + x + horizontalGap, left + container.clientWidth - label.offsetWidth - 8)}px`;
+      label.style.top = `${top + y - lift}px`;
+    };
+    // DOM outlines remain visible through terrain when the body is below
+    // the measured horizon, while retaining its actual projected direction.
+    const projectHiddenBody = (
+      outline: HTMLDivElement | null,
+      object: THREE.Object3D,
+      radius: number,
+      show: boolean,
+    ) => {
+      if (!outline) return;
+      outline.style.display = "none";
+      if (!show) return;
+      const position = object.getWorldPosition(new THREE.Vector3());
+      const depth = -position.clone().applyMatrix4(camera.matrixWorldInverse).z;
+      const point = position.project(camera);
+      if (
+        depth <= camera.near ||
+        Math.abs(point.x) > 1 ||
+        Math.abs(point.y) > 1 ||
+        Math.abs(point.z) > 1
+      )
+        return;
+      const diameter =
+        (radius * object.scale.x * container.clientHeight) /
+        (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * depth);
+      outline.style.width =
+        outline.style.height = `${Math.max(12, diameter)}px`;
+      outline.style.left = `${container.offsetLeft + (point.x * 0.5 + 0.5) * container.clientWidth}px`;
+      outline.style.top = `${container.offsetTop + (-point.y * 0.5 + 0.5) * container.clientHeight}px`;
+      outline.style.display = "block";
     };
     const finishFlight = () => {
       flight = null;
@@ -340,6 +394,7 @@ export function LunarScene(props: Props) {
           current.lat !== lastData.lat || current.lon !== lastData.lon;
         lastData = current;
         syncObjects();
+        if (changedSite && current.view === "planner") reset();
         if (
           current.view === "surface" &&
           (mode !== current.view || changedSite)
@@ -349,9 +404,10 @@ export function LunarScene(props: Props) {
       }
       if (mode !== current.view) {
         mode = current.view;
-        controls.enabled = mode === "orbit";
-        ambient.intensity = mode === "orbit" ? 0.25 : 0.22;
-        if (mode === "orbit") {
+        if (mode === "surface") requestTerrain();
+        controls.enabled = mode === "planner";
+        ambient.intensity = mode === "planner" ? 0.25 : 0.22;
+        if (mode === "planner") {
           flight = null;
           orbitGroup.visible = true;
           surfaceGroup.visible = false;
@@ -367,8 +423,14 @@ export function LunarScene(props: Props) {
       }
       if (command !== current.command) {
         command = current.command;
-        if (mode === "orbit") reset();
-        else look(command.target === "reset" ? "earth" : command.target);
+        if (mode === "planner") reset();
+        else {
+          if (command.target === "reset") {
+            camera.fov = 42;
+            camera.updateProjectionMatrix();
+          }
+          look(command.target === "reset" ? "earth" : command.target);
+        }
       }
       if (flight) {
         needsRender = true;
@@ -381,7 +443,7 @@ export function LunarScene(props: Props) {
         camera.lookAt(0, 0, 0);
         if (t === 1) finishFlight();
       }
-      if (mode === "orbit") {
+      if (mode === "planner") {
         controls.update();
         if (needsRender) ring.lookAt(camera.position);
       } else if (!flight && needsRender)
@@ -392,24 +454,38 @@ export function LunarScene(props: Props) {
       project(
         siteLabel.current,
         marker,
-        mode === "orbit" &&
+        mode === "planner" &&
           marker.position.dot(camera.position.clone().sub(marker.position)) > 0,
+        4,
+        5,
       );
       project(
         sunLabel.current,
         sun,
-        mode === "surface" && !flight && sun.visible,
+        mode === "surface" && !flight && Boolean(data),
       );
       project(
         earthLabel.current,
         earth,
-        mode === "surface" && !flight && earth.visible,
+        mode === "surface" && !flight && Boolean(data),
       );
       project(
         stationLabel.current,
         stationMarker,
         mode === "surface" && !flight && earth.visible && facing,
         50,
+      );
+      projectHiddenBody(
+        hiddenSun.current,
+        sun,
+        3,
+        mode === "surface" && !flight && Boolean(data) && !sun.visible,
+      );
+      projectHiddenBody(
+        hiddenEarth.current,
+        earth,
+        6,
+        mode === "surface" && !flight && Boolean(data) && !earth.visible,
       );
       renderer.render(scene, camera);
     };
@@ -439,7 +515,7 @@ export function LunarScene(props: Props) {
       drag.lastY = event.clientY;
     };
     const up = (event: PointerEvent) => {
-      if (drag && !drag.moved && mode === "orbit") {
+      if (drag && !drag.moved && mode === "planner") {
         const r = renderer.domElement.getBoundingClientRect();
         ray.setFromCamera(
           new THREE.Vector2(
@@ -462,10 +538,38 @@ export function LunarScene(props: Props) {
     const cancel = () => {
       drag = null;
     };
+    const zoom = (event: WheelEvent) => {
+      if (
+        mode !== "surface" ||
+        flight ||
+        !event.shiftKey ||
+        event.ctrlKey ||
+        event.metaKey
+      )
+        return;
+      event.preventDefault();
+      const unit =
+        event.deltaMode === 1
+          ? 16
+          : event.deltaMode === 2
+            ? container.clientHeight
+            : 1;
+      // Shift can turn vertical wheel input into horizontal deltas.
+      const delta = (event.deltaY || event.deltaX) * unit;
+      // Adjust the lens, keeping the observer at the landing site.
+      camera.fov = THREE.MathUtils.clamp(
+        camera.fov * Math.exp(THREE.MathUtils.clamp(delta * 0.0015, -0.5, 0.5)),
+        18,
+        75,
+      );
+      camera.updateProjectionMatrix();
+      needsRender = true;
+    };
     const contextLost = (event: Event) => {
       event.preventDefault();
       setMessage("3D view interrupted. Reload to restore it.");
     };
+    renderer.domElement.addEventListener("wheel", zoom, { passive: false });
     container.addEventListener("pointerdown", down);
     container.addEventListener("pointermove", move);
     container.addEventListener("pointerup", up);
@@ -479,6 +583,7 @@ export function LunarScene(props: Props) {
       cancelAnimationFrame(frame);
       observer.disconnect();
       controls.dispose();
+      renderer.domElement.removeEventListener("wheel", zoom);
       container.removeEventListener("pointerdown", down);
       container.removeEventListener("pointermove", move);
       container.removeEventListener("pointerup", up);
@@ -498,9 +603,9 @@ export function LunarScene(props: Props) {
         ref={host}
         role="img"
         aria-label={
-          props.view === "orbit"
+          props.view === "planner"
             ? "Interactive Moon. Drag to rotate and click to choose a landing site."
-            : "Lunar horizon. Drag to look around."
+            : "Lunar horizon. Drag to look around. Hold Shift and scroll to zoom."
         }
       />
       {message && (
@@ -514,22 +619,46 @@ export function LunarScene(props: Props) {
           {props.lat.toFixed(3)}° N / {props.lon.toFixed(3)}° E
         </span>
       </div>
+      <div
+        className="hidden-body-outline hidden-sun"
+        ref={hiddenSun}
+        role="img"
+        aria-label="Sun position below the horizon"
+      />
+      <div
+        className="hidden-body-outline hidden-earth"
+        ref={hiddenEarth}
+        role="img"
+        aria-label="Earth position below the horizon"
+      />
       <div className="scene-label sun-label" ref={sunLabel}>
-        ☀ SUN <span>{data?.sun.elevationDeg.toFixed(1)}° elevation</span>
+        ☀ SUN{" "}
+        <span>
+          {data?.sun.elevationDeg.toFixed(1)}° elevation
+          {data && data.sun.visibilityClearanceDeg <= 0
+            ? " · below horizon"
+            : ""}
+        </span>
       </div>
       <div className="scene-label earth-label" ref={earthLabel}>
-        ◉ EARTH <span>{data?.earth.elevationDeg.toFixed(1)}° elevation</span>
+        ◉ EARTH{" "}
+        <span>
+          {data?.earth.elevationDeg.toFixed(1)}° elevation
+          {data && data.earth.visibilityClearanceDeg <= 0
+            ? " · below horizon"
+            : ""}
+        </span>
       </div>
       <div className="scene-label station-label" ref={stationLabel}>
         ● <span>{stations[props.station].name}</span>
       </div>
       <div className="view-caption">
         <span>
-          {props.view === "orbit"
+          {props.view === "planner"
             ? "DRAG TO ROTATE · FIXED SCALE"
-            : "DRAG TO LOOK AROUND"}
+            : "DRAG TO LOOK AROUND · SHIFT + SCROLL TO ZOOM"}
         </span>
-        <span>{props.view === "orbit" ? moonCaption : surfaceCaption}</span>
+        <span>{props.view === "planner" ? moonCaption : surfaceCaption}</span>
       </div>
     </>
   );

@@ -26,3 +26,12 @@ export function SurfaceSymbol(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function PlannerSymbol(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...common} {...props}>
+      <rect x="4" y="5" width="16" height="16" rx="3" />
+      <path d="M8 3v4m8-4v4M4 11h16m-12 5 2 2 5-4" />
+    </svg>
+  );
+}

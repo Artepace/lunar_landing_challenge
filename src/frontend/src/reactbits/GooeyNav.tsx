@@ -9,7 +9,6 @@ import {
 } from "react";
 
 import "./GooeyNav.css";
-import { SpecularButton } from "../SpecularButton";
 
 const useIsomorphicLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -994,13 +993,9 @@ const GooeyNav = ({
               {content}
             </a>
           ) : (
-            <SpecularButton
-              radius={999}
-              aria-pressed={index === current}
-              {...shared}
-            >
+            <button type="button" aria-pressed={index === current} {...shared}>
               {content}
-            </SpecularButton>
+            </button>
           )}
         </li>
       );

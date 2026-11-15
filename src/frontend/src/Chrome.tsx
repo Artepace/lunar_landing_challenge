@@ -4,10 +4,12 @@ import { SpecularButton } from "./SpecularButton";
 
 export function Chrome({
   children,
+  navigation,
   motion,
   onToggleMotion,
 }: {
   children: ReactNode;
+  navigation: ReactNode;
   motion: boolean;
   onToggleMotion: () => void;
 }) {
@@ -42,11 +44,12 @@ export function Chrome({
           />
           <span className="brand-wordmark">SELENE</span>
         </a>
+        <div className="header-view-navigation">{navigation}</div>
       </header>
       <main>{children}</main>
       <footer className="site-footer">
         <SpecularButton onClick={openAbout} className="footer-action">
-          About the model ↗
+          About the model
         </SpecularButton>
         <SpecularButton onClick={onToggleMotion} className="footer-action">
           {motionLabel}

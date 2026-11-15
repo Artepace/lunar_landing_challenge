@@ -58,6 +58,7 @@ type ShapeArt =
   | { src: string; failed: true };
 
 export interface GlassSurfaceProps {
+  as?: "div" | "span";
   children?: ReactNode;
   width?: number | string;
   height?: number | string;
@@ -440,6 +441,7 @@ const bendShape = (
 };
 
 const GlassSurface = ({
+  as: Container = "div",
   children,
   width = 200,
   height = 80,
@@ -988,7 +990,7 @@ const GlassSurface = ({
   } as CSSProperties;
 
   return (
-    <div
+    <Container
       ref={containerRef}
       className={`glass-surface ${webgl ? "glass-surface--webgl" : refractive ? "glass-surface--svg" : "glass-surface--fallback"} ${className}`}
       style={containerStyle}
@@ -1114,8 +1116,8 @@ const GlassSurface = ({
         />
       )}
 
-      <div className="glass-surface__content">{children}</div>
-    </div>
+      <Container className="glass-surface__content">{children}</Container>
+    </Container>
   );
 };
 

@@ -82,3 +82,45 @@ test('foreground rocks stay grounded at both metre and kilometre terrain scales'
     rocks.geometry.dispose(); rocks.material.dispose(); geometry.dispose(); terrain.material.dispose();
   }
 });
+
+test('Moon-centered positions preserve Surface sightlines at equator and poles', async () => {
+  const { orbitPosition } = await import('./src/orbitPosition.ts');
+  const radians = Math.PI / 180;
+  for (const [lat, lon] of [[0, 0], [-89.5, 30], [90, 180], [-90, -90], [45, -120]]) {
+    const p = lat * radians, l = lon * radians;
+    const up = [Math.cos(p) * Math.cos(l), Math.sin(p), -Math.cos(p) * Math.sin(l)];
+    const north = [-Math.sin(p) * Math.cos(l), Math.cos(p), Math.sin(p) * Math.sin(l)];
+    const east = [-Math.sin(l), 0, -Math.cos(l)];
+    const site = orbitPosition(lat, lon, 0, 0, 0);
+    for (const az of [0, 90, 180, 270, 359]) for (const el of [-30, 0, 45, 90]) {
+      const position = orbitPosition(lat, lon, az, el, 14);
+      const direction = position.map((v, i) => (v - site[i]) / 14);
+      const dot = (basis) => direction.reduce((sum, v, i) => sum + v * basis[i], 0);
+      assert(Math.abs(dot(up) - Math.sin(el * radians)) < 1e-12);
+      assert(Math.abs(dot(north) - Math.cos(el * radians) * Math.cos(az * radians)) < 1e-12);
+      assert(Math.abs(dot(east) - Math.cos(el * radians) * Math.sin(az * radians)) < 1e-12);
+    }
+  }
+});
+
+test('site camera centers the landing marker with a stable up direction, including poles', async () => {
+  const { siteCameraFrame } = await import('./src/siteCameraFrame.ts');
+  const { orbitPosition } = await import('./src/orbitPosition.ts');
+  const { PerspectiveCamera, Vector3 } = await import('three');
+  const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+  for (const [lat, lon] of [[-89.5, 30], [0, 0], [90, 180], [-90, -90], [45, -120]]) {
+    const frame = siteCameraFrame(lat, lon);
+    const camera = new PerspectiveCamera(45, 1, 0.01, 500);
+    camera.up.fromArray(frame.up);
+    camera.position.fromArray(frame.direction).multiplyScalar(37);
+    const controls = new OrbitControls(camera, null);
+    controls.update();
+    camera.updateMatrixWorld();
+    const marker = new Vector3(...orbitPosition(lat, lon, 0, 90, 0.03));
+    const projected = marker.project(camera);
+    assert(Math.abs(projected.x) < 1e-10);
+    assert(Math.abs(projected.y) < 1e-10);
+    assert(projected.z > -1 && projected.z < 1);
+    assert(Math.abs(new Vector3(...frame.direction).dot(new Vector3(...frame.up))) < 1e-12);
+  }
+});

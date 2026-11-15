@@ -15,6 +15,7 @@ export interface OptionWheelProps {
   label?: string;
   items?: string[];
   defaultSelected?: number;
+  selected?: number;
   onChange?: (index: number, item: string) => void;
   textColor?: string;
   activeColor?: string;
@@ -72,6 +73,7 @@ const OptionWheel = ({
   label = "Option wheel",
   items = DEFAULT_ITEMS,
   defaultSelected = 3,
+  selected,
   onChange,
   textColor = "#a6a6a6",
   activeColor = "#ffffff",
@@ -101,6 +103,7 @@ const OptionWheel = ({
   const cfgRef = useRef<WheelConfig>({} as WheelConfig);
   const onChangeRef = useRef(onChange);
   const selectedRef = useRef(defaultSelected);
+  const committedRef = useRef(defaultSelected);
   const wheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragRef = useRef<{ y: number; start: number; id: number } | null>(null);
   const dragMovedRef = useRef(false);
@@ -187,6 +190,15 @@ const OptionWheel = ({
       );
     }
 
+    // Commit only the settled choice, so dragging does not repeatedly fetch
+    // ephemerides or reframe the Moon for every option passed along the way.
+    if (settled && n > 0 && Number.isInteger(target) && !dragRef.current) {
+      const index = ((target % n) + n) % n;
+      if (index !== committedRef.current) {
+        committedRef.current = index;
+        onChangeRef.current?.(index, cfg.items[index]);
+      }
+    }
     rafRef.current = settled ? null : requestAnimationFrame(runFrame);
   }, []);
 
@@ -220,6 +232,7 @@ const OptionWheel = ({
   const applyTarget = useCallback(
     (value: number, snap: boolean) => {
       const cfg = cfgRef.current;
+      if (!cfg.count) return;
       let v = value;
       if (!cfg.loop) v = Math.min(Math.max(v, 0), Math.max(cfg.count - 1, 0));
       if (snap) v = Math.round(v);
@@ -228,7 +241,6 @@ const OptionWheel = ({
       if (idx !== selectedRef.current) {
         selectedRef.current = idx;
         setSelectedIndex(idx);
-        onChangeRef.current?.(idx, cfg.items[idx]);
         playTick();
       }
       startLoop();
@@ -236,11 +248,24 @@ const OptionWheel = ({
     [startLoop, playTick],
   );
 
+  useEffect(() => {
+    if (selected === undefined || selected === committedRef.current) return;
+    const index = Math.max(0, Math.min(items.length - 1, selected));
+    if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current);
+    dragRef.current = null;
+    setIsDragging(false);
+    committedRef.current = selectedRef.current = index;
+    setSelectedIndex(index);
+    targetRef.current = index;
+    startLoop();
+  }, [selected, items.length, startLoop]);
+
   // Wheel / touchpad scrolling, registered manually so it can be non-passive.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey || cfgRef.current.count < 2) return;
       e.preventDefault();
       const cfg = cfgRef.current;
       const delta = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY;
@@ -263,7 +288,8 @@ const OptionWheel = ({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!cfgRef.current.draggable) return;
+      if (!cfgRef.current.draggable || e.button !== 0) return;
+      rootRef.current?.focus({ preventScroll: true });
       dragRef.current = {
         y: e.clientY,
         start: targetRef.current,
@@ -378,6 +404,7 @@ const OptionWheel = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
+      onLostPointerCapture={handlePointerEnd}
       onKeyDown={handleKeyDown}
     >
       {items.map((label, index) => (
@@ -388,6 +415,7 @@ const OptionWheel = ({
           }}
           id={`${id}-${index}`}
           role="option"
+          title={label}
           aria-selected={selectedIndex === index}
           className={`option-wheel__item${selectedIndex === index ? " option-wheel__item--selected" : ""}`}
           onClick={() => handleItemClick(index)}
