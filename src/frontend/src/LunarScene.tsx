@@ -26,6 +26,7 @@ type Props = {
   command: { target: Body | "reset" };
   onPick: (lat: number, lon: number) => void;
   onFacing: (facing: boolean) => void;
+  onBackdrop: (canvas: HTMLCanvasElement | undefined) => void;
 };
 const previewEyeHeight = 2;
 const measuredEyeHeight = previewEyeHeight / 1_000;
@@ -61,6 +62,7 @@ export function LunarScene(props: Props) {
         antialias: true,
         alpha: true,
         logarithmicDepthBuffer: true,
+        preserveDrawingBuffer: true,
       });
     } catch {
       setMessage(
@@ -79,6 +81,7 @@ export function LunarScene(props: Props) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
+    latest.current.onBackdrop(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 1500);
     let controls = new OrbitControls(camera, renderer.domElement);
@@ -566,6 +569,7 @@ export function LunarScene(props: Props) {
       needsRender = true;
     };
     const contextLost = (event: Event) => {
+      latest.current.onBackdrop(undefined);
       event.preventDefault();
       setMessage("3D view interrupted. Reload to restore it.");
     };
@@ -577,6 +581,7 @@ export function LunarScene(props: Props) {
     renderer.domElement.addEventListener("webglcontextlost", contextLost);
     frame = requestAnimationFrame(animate);
     return () => {
+      latest.current.onBackdrop(undefined);
       disposed = true;
       modelRequest.abort();
       terrainRequest?.abort();

@@ -70,7 +70,7 @@ def get_table(settings, *, timeout_seconds=180):
         if remaining <= 0:
             raise HorizonsTimeout("Horizons request timed out while waiting for the client.")
         request = urllib.request.Request(url, headers={
-            "User-Agent": "SELENE/1.0 (https://github.com/Artepace/lunar_landing_challenge)",
+            "User-Agent": "KHONSU/1.0 (https://github.com/Artepace/lunar_landing_challenge)",
         })
         with urllib.request.urlopen(request, timeout=remaining) as response:
             text = response.read().decode("utf-8")

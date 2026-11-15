@@ -26,6 +26,7 @@ export function OrbitScene(props: Props) {
   const host = useRef<HTMLDivElement>(null);
   const reset = useRef(() => {});
   const [error, setError] = useState("");
+  const [backdrop, setBackdrop] = useState<HTMLCanvasElement>();
   const state = useRef(props);
   useEffect(() => {
     state.current = props;
@@ -37,7 +38,11 @@ export function OrbitScene(props: Props) {
     const container = host.current!;
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true,
+      });
     } catch {
       setError("3D rendering is unavailable in this browser.");
       return;
@@ -47,6 +52,7 @@ export function OrbitScene(props: Props) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.25;
     container.appendChild(renderer.domElement);
+    setBackdrop(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
     let controls = new OrbitControls(camera, renderer.domElement);
@@ -303,6 +309,7 @@ export function OrbitScene(props: Props) {
     };
     const lost = (event: Event) => {
       event.preventDefault();
+      setBackdrop(undefined);
       setError("3D view interrupted. Reload to restore it.");
     };
     renderer.domElement.addEventListener("webglcontextlost", lost);
@@ -347,6 +354,7 @@ export function OrbitScene(props: Props) {
         </div>
       )}
       <ScenePlayer
+        backdrop={backdrop}
         distortionScale={-220}
         greenOffset={20}
         time={props.time}

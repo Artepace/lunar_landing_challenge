@@ -1,1 +1,1 @@
-"""Lunar ephemeris calculations and the SELENE visibility API."""
+"""Lunar ephemeris calculations and the KHONSU visibility API."""

@@ -23,7 +23,7 @@ import {
   type Visibility,
 } from "./visibility";
 import "./styles.css";
-import "./selene-theme.css";
+import "./khonsu-theme.css";
 
 const initialDate = "2026-11-14T12:00";
 const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
@@ -61,6 +61,7 @@ type Result =
 
 function App() {
   const [view, setView] = useState<View>("planner");
+  const [lunarBackdrop, setLunarBackdrop] = useState<HTMLCanvasElement>();
   const [backgroundMotion, setBackgroundMotion] = useState(
     () => !matchMedia(reducedMotionQuery).matches,
   );
@@ -232,6 +233,7 @@ function App() {
           />
         ) : (
           <LunarScene
+            onBackdrop={setLunarBackdrop}
             view={view}
             lat={site.lat}
             lon={site.lon}
@@ -349,6 +351,7 @@ function App() {
         </div>
         {view === "surface" && (
           <ScenePlayer
+            backdrop={lunarBackdrop}
             time={time}
             offset={offset}
             playing={playing}

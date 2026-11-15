@@ -3,6 +3,7 @@ import { SpecularButton } from "./SpecularButton";
 import { WINDOW_HOURS } from "./visibility";
 
 type Props = {
+  backdrop?: HTMLCanvasElement;
   time: number;
   offset: number;
   playing: boolean;
@@ -15,6 +16,7 @@ type Props = {
   greenOffset?: number;
 };
 export function ScenePlayer({
+  backdrop,
   time,
   offset,
   playing,
@@ -30,6 +32,7 @@ export function ScenePlayer({
     <div className={`orbital-console glass-player ${className}`}>
       <div className="player-glass" aria-hidden="true">
         <GlassSurface
+          backdrop={backdrop}
           width="100%"
           height="100%"
           borderRadius={18}

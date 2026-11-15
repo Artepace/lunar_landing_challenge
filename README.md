@@ -5,8 +5,8 @@ A starter repository for our 2026 NASA Space Apps Challenge project on lunar lan
 ## Project and demo
 
 - Challenge brief: https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/
-- Project: SELENE, an interactive Moon-to-surface explorer for comparing sunlight and Earth visibility.
-- SELENE combines JPL Horizons Sun and Earth positions with NASA LOLA south-pole elevation maps. The explorer displays a 72-hour visibility timeline for named sites or custom coordinates.
+- Project: KHONSU, an interactive Moon-to-surface explorer for comparing sunlight and Earth visibility.
+- KHONSU combines JPL Horizons Sun and Earth positions with NASA LOLA south-pole elevation maps. The explorer displays a 72-hour visibility timeline for named sites or custom coordinates.
 
 ## Run locally
 

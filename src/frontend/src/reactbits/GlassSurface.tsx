@@ -476,6 +476,7 @@ const GlassSurface = ({
   const [svgSupported, setSvgSupported] = useState<boolean>(false);
   const [checked, setChecked] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
+  const [webglReady, setWebglReady] = useState(false);
   const [boxSize, setBoxSize] = useState<string>("");
   const [loaded, setLoaded] = useState<{
     src: string;
@@ -676,7 +677,8 @@ const GlassSurface = ({
     !webglFailed &&
     (renderer === "webgl" || (renderer === "auto" && !svgSupported));
   const refractive = !webgl && svgSupported && refraction;
-  const frosted = !webgl && !refractive;
+  const refracted = webgl && webglReady;
+  const frosted = !refracted && !refractive;
 
   useEffect(() => {
     if (!webgl) return undefined;
@@ -749,12 +751,14 @@ const GlassSurface = ({
     let frame = 0;
     let visible = true;
     let drawn = "";
+    let ready = false;
+    let disposed = false;
 
     const loadMap = (url: string) => {
       map.url = url;
       const image = new Image();
       image.onload = () => {
-        if (map.url !== url || !mapContext) return;
+        if (disposed || map.url !== url || !mapContext) return;
         const ratio = Math.min(2, window.devicePixelRatio || 1);
         mapCanvas.width = Math.max(1, Math.round(element.offsetWidth * ratio));
         mapCanvas.height = Math.max(
@@ -775,13 +779,23 @@ const GlassSurface = ({
         map.ready = true;
         drawn = "";
       };
+      image.onerror = () => {
+        if (!disposed && map.url === url) setWebglFailed(true);
+      };
       image.src = url;
     };
 
     const upload = (node: GlassSurfaceBackdrop) => {
       const still = node instanceof HTMLImageElement;
+      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, backdropTexture);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, node);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      if (gl.getError() !== gl.NO_ERROR) {
+        setWebglFailed(true);
+        return;
+      }
       if (still) gl.generateMipmap(gl.TEXTURE_2D);
       gl.texParameteri(
         gl.TEXTURE_2D,
@@ -909,6 +923,10 @@ const GlassSurface = ({
       gl.uniform1f(uniforms.uLod, lod);
       gl.uniform1f(uniforms.uSaturation, s.saturation);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (!ready) {
+        ready = true;
+        setWebglReady(true);
+      }
     };
 
     const wake = () => {
@@ -929,6 +947,8 @@ const GlassSurface = ({
     wake();
 
     return () => {
+      disposed = true;
+      setWebglReady(false);
       cancelAnimationFrame(frame);
       intersection.disconnect();
       document.removeEventListener("visibilitychange", wake);
@@ -992,7 +1012,7 @@ const GlassSurface = ({
   return (
     <Container
       ref={containerRef}
-      className={`glass-surface ${webgl ? "glass-surface--webgl" : refractive ? "glass-surface--svg" : "glass-surface--fallback"} ${className}`}
+      className={`glass-surface ${refracted ? "glass-surface--webgl" : refractive ? "glass-surface--svg" : "glass-surface--fallback"} ${className}`}
       style={containerStyle}
     >
       <svg className="glass-surface__filter" xmlns="http://www.w3.org/2000/svg">
@@ -1084,7 +1104,7 @@ const GlassSurface = ({
           aria-hidden="true"
         />
       )}
-      {webgl && (
+      {refracted && (
         <span
           className="glass-surface__frame"
           aria-hidden="true"

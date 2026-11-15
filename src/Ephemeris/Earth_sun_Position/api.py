@@ -117,11 +117,11 @@ def _visibility_with_horizon(request, start, stop):
 
 
 def create_app(*, serve_frontend=True):
-    app = FastAPI(title="SELENE visibility API", version="1.0.0")
+    app = FastAPI(title="KHONSU visibility API", version="1.0.0")
 
     # Same-origin requests need no CORS settings. For a separate React server,
-    # set SELENE_CORS_ORIGINS to its origin (or comma-separated origins).
-    origins = [origin.strip() for origin in os.getenv("SELENE_CORS_ORIGINS", "").split(",")
+    # set KHONSU_CORS_ORIGINS to its origin (or comma-separated origins).
+    origins = [origin.strip() for origin in os.getenv("KHONSU_CORS_ORIGINS", os.getenv("SELENE_CORS_ORIGINS", "")).split(",")
                if origin.strip()]
     if origins:
         app.add_middleware(

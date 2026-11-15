@@ -72,7 +72,7 @@ def utc_text(value):
 
 def get_bytes(url):
     """This is the HTTP GET request. There are no automatic retry loops."""
-    request = urllib.request.Request(url, headers={"User-Agent": "SELENE-lunar-satellite-study/1.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": "KHONSU-lunar-satellite-study/1.0"})
     try:
         opener = urllib.request.build_opener(NoRedirects())
         with opener.open(request, timeout=HTTP_TIMEOUT_SECONDS) as response:

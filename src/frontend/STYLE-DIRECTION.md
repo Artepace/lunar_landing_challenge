@@ -1,4 +1,4 @@
-# SELENE: Observatory direction
+# KHONSU: Observatory direction
 
 ## Brief
 Preserve the orbit background and grayscale Moon, including its existing lighting and interaction. Give the interface an identity distinct from Instinct. Remain usable as an exploration tool, not only a space-company marketing page.
@@ -32,7 +32,7 @@ No third-party fonts, CSS, videos, logos or imagery were extracted from these co
 - Move from an expressive scene to precise measurements as the user scrolls.
 
 ## Implementation and checks
-The current theme is `dist/selene-theme.css`. The previous `instinct-theme.css` is retained but no longer loaded. Existing geometry, camera transitions, model data and UI event handlers are unchanged. Copy is made more specific to the user's task. Check desktop and phone widths, surface switching, visible keyboard focus, numeric legibility and loading of both fonts.
+The current theme is `dist/khonsu-theme.css`. The previous `instinct-theme.css` is retained but no longer loaded. Existing geometry, camera transitions, model data and UI event handlers are unchanged. Copy is made more specific to the user's task. Check desktop and phone widths, surface switching, visible keyboard focus, numeric legibility and loading of both fonts.
 
 ## Scientific boundary
 This remains a frontend with illustrative ephemerides and procedural terrain. A visual redesign does not increase its scientific accuracy.

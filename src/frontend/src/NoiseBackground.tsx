@@ -78,8 +78,8 @@ export function OrbitBackdrop({ motion }: { motion: boolean }) {
       <video
         ref={video}
         className="orbit-background-video"
-        src={`${assets}selene-orbit-loop.mp4`}
-        poster={`${assets}selene-orbit-poster.webp`}
+        src={`${assets}khonsu-orbit-loop.mp4`}
+        poster={`${assets}khonsu-orbit-poster.webp`}
         preload="none"
         loop
         muted

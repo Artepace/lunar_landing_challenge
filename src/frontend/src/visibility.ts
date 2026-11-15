@@ -52,7 +52,7 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
   try {
     response = await fetch(apiUrl(path), options);
   } catch {
-    throw new Error("Could not reach the SELENE API.");
+    throw new Error("Could not reach the KHONSU API.");
   }
   if (!response.ok) {
     if (response.status === 502)
@@ -61,10 +61,10 @@ async function request<T>(path: string, options: RequestInit): Promise<T> {
       throw new Error("The visibility request timed out.");
     if (response.status === 422)
       throw new Error("Check the landing coordinates and UTC time.");
-    throw new Error("Could not reach the SELENE API.");
+    throw new Error("Could not reach the KHONSU API.");
   }
   if (!response.headers.get("content-type")?.includes("application/json")) {
-    throw new Error("Could not reach the SELENE API.");
+    throw new Error("Could not reach the KHONSU API.");
   }
   return response.json();
 }
@@ -124,7 +124,7 @@ export async function loadVisibility(
         Number.isFinite(sample.sun.visibleFraction),
     )
   ) {
-    throw new Error("The SELENE API returned incomplete visibility data.");
+    throw new Error("The KHONSU API returned incomplete visibility data.");
   }
   return result;
 }

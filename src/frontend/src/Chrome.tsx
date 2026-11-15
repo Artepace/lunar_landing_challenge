@@ -33,16 +33,16 @@ export function Chrome({
         <a
           className="brand-link"
           href="#explore"
-          aria-label="SELENE — lunar explorer"
+          aria-label="KHONSU — lunar explorer"
         >
           <img
-            className="selene-symbol"
-            src={import.meta.env.BASE_URL + "selene-mark.svg"}
+            className="khonsu-symbol"
+            src={import.meta.env.BASE_URL + "khonsu-mark.svg"}
             alt=""
             width="40"
             height="40"
           />
-          <span className="brand-wordmark">SELENE</span>
+          <span className="brand-wordmark">KHONSU</span>
         </a>
         <div className="header-view-navigation">{navigation}</div>
       </header>

@@ -1,4 +1,4 @@
-# SELENE frontend — sources and design decisions
+# KHONSU frontend — sources and design decisions
 
 Updated 15 November 2026. The lunar explorer is original; the five requested React Bits UI components are vendored with their license in `src/reactbits/`.
 
@@ -9,11 +9,11 @@ Updated 15 November 2026. The lunar explorer is original; the five requested Rea
 - NASA CGI Moon Kit: https://svs.gsfc.nasa.gov/4720/ . Color and small height-preview images supply the textured globe while the GLB loads and if it fails. Credit NASA/Goddard/Scientific Visualization Studio, LRO/LROC/LOLA teams.
 - Earth appearance: https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg . From the Three.js examples texture collection; illustrative appearance, not a current Earth observation. Retain its source attribution; verify original image terms before redistributing outside this prototype.
 - The supplied `NoiseBackground.tsx` and `NoiseHero.tsx` inform the site-wide animated grain. The local Selena lander loop and its poster sit behind the interactive orbit view.
-- The Orbit video and poster in `public/assets/selene-orbit-*` use the supplied spacecraft artwork, an AI-generated concept inspired by [Blue Origin's Blue Moon Mark 2 Alpha](https://www.nasa.gov/missions/artemis/nasa-partners-accelerate-lander-development-for-2028-moon-missions/). The grain, star field, and reflections were added for the animation. The open right side leaves room for the interactive Moon.
+- The Orbit video and poster in `public/assets/khonsu-orbit-*` use the supplied spacecraft artwork, an AI-generated concept inspired by [Blue Origin's Blue Moon Mark 2 Alpha](https://www.nasa.gov/missions/artemis/nasa-partners-accelerate-lander-development-for-2028-moon-missions/). The grain, star field, and reflections were added for the animation. The open right side leaves room for the interactive Moon.
 
 ## Requested design references
-- The Orbit and Surface switch uses [Gooey Nav](https://reactbits.dev/components/gooey-nav). The detached SELENE mark takes its glass treatment from [Glass Surface](https://reactbits.dev/components/glass-surface) and [Fluid Glass](https://reactbits.dev/components/fluid-glass). The curved preset picker and shared flat buttons adapt [Option Wheel](https://reactbits.dev/components/option-wheel) and [Specular Button](https://reactbits.dev/components/specular-button).
-- https://www.instinct-space.com/ — revised visual direction, inspected in-browser: Instrument Serif headlines, Workbench display labels, monochrome palette, floating dark navigation, white pill CTA, editorial section spacing and low-chrome content columns. SELENE retains its own name, wording, controls, imagery and code. No Instinct logos, videos or spacecraft assets were copied. `instinct-theme.css` contains this reversible styling layer; body geometry and timings remain illustrative.
+- The Orbit and Surface switch uses [Gooey Nav](https://reactbits.dev/components/gooey-nav). The detached KHONSU mark takes its glass treatment from [Glass Surface](https://reactbits.dev/components/glass-surface) and [Fluid Glass](https://reactbits.dev/components/fluid-glass). The curved preset picker and shared flat buttons adapt [Option Wheel](https://reactbits.dev/components/option-wheel) and [Specular Button](https://reactbits.dev/components/specular-button).
+- https://www.instinct-space.com/ — revised visual direction, inspected in-browser: Instrument Serif headlines, Workbench display labels, monochrome palette, floating dark navigation, white pill CTA, editorial section spacing and low-chrome content columns. KHONSU retains its own name, wording, controls, imagery and code. No Instinct logos, videos or spacecraft assets were copied. `instinct-theme.css` contains this reversible styling layer; body geometry and timings remain illustrative.
 - https://drag-globe.learnframer.site/ — globe-image-grid interaction reference. Used the direct-manipulation idea: drag to orbit, click to select. This is a Three.js Moon, not the Framer component.
 - https://strangepixels.co/en — sparse navigation and clear editorial hierarchy informed the large opening title and restrained chrome.
 - https://www.foll-ow.com/ — scroll-led presentation informed the transition from exploration to a second, detailed section.
@@ -43,6 +43,6 @@ The refinement removes duplicate CSS button borders so the React Bits canvas sup
 - Landing-site selection applies directly from the wheel; clicking an option closes it. Only the selected name is yellow, with neutral grey alternatives.
 - Shared buttons now use a quiet CSS border; the older Specular Button and glass component sources remain archived under `src/reactbits/` but are no longer mounted. Gooey Nav remains the view selector.
 - Orbit and Surface use the Lucide [Orbit](https://lucide.dev/icons/orbit) and [Mountain](https://lucide.dev/icons/mountain) symbols. ISC license retained in `public/icons/LICENSE`.
-- The original minimal SELENE mark combines a lunar arc, horizon, and landing beacon. Editable vector: `public/selene-mark.svg`.
+- The original minimal KHONSU mark combines a lunar arc, horizon, and landing beacon. Editable vector: `public/khonsu-mark.svg`.
 - One continuous noise field replaces the section-specific glow. The Moon has fixed camera distance and responsive framing; wheel and pinch zoom are disabled.
 - Surface view retains measured LOLA geometry and adds procedural multi-scale regolith, deterministic stones placed on that mesh, and local stone shadows with Sun-aligned lighting. Rocks, grain, and fill illumination are illustrative and do not alter elevation data or visibility calculations. Lunar-surface reference: [NASA Moon facts](https://science.nasa.gov/moon/facts/).

@@ -38,7 +38,7 @@ http
           if (response.headersSent) return response.destroy();
           response.writeHead(503, { "Content-Type": "application/json" });
           response.end(
-            JSON.stringify({ detail: "The SELENE API is unavailable." }),
+            JSON.stringify({ detail: "The KHONSU API is unavailable." }),
           );
         });
         response.on("close", () => upstream.destroy());

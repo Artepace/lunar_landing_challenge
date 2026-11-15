@@ -1,4 +1,4 @@
-/* SELENE / Observatory. Original visual system; scene treatment preserved. */
+/* KHONSU / Observatory. Original visual system; scene treatment preserved. */
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 :root {
   --bg: #050505;
@@ -1062,7 +1062,7 @@ html {
   display: none !important;
 }
 
-/* React Bits components, adapted to SELENE's neutral palette. */
+/* React Bits components, adapted to KHONSU's neutral palette. */
 .masthead {
   justify-content: flex-start;
   padding: 22px 5% 18px;
@@ -1250,7 +1250,7 @@ h6 {
   padding: 0;
   border-radius: 0;
 }
-.selene-symbol {
+.khonsu-symbol {
   display: block;
   width: 40px;
   height: 40px;
@@ -1577,7 +1577,7 @@ h6 {
 @media (max-width: 600px) {
   .masthead { gap: 8px; padding-inline: 4%; }
   .masthead .brand-wordmark { display: none; }
-  .masthead .selene-symbol { width: 32px; height: 32px; }
+  .masthead .khonsu-symbol { width: 32px; height: 32px; }
   .header-view-navigation .view-navigation { --gn-x: 7px; --gn-font: 10px; }
 }
 

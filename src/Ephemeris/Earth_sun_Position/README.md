@@ -1,4 +1,4 @@
-# SELENE lunar visibility backend
+# KHONSU lunar visibility backend
 
 The backend returns the apparent direction of the Sun and Earth from a chosen
 lunar surface point. It reuses the existing JPL Horizons HTTP GET client. The
@@ -173,14 +173,14 @@ when building it and allow the frontend origin before starting the API. For
 example, in Windows PowerShell:
 
 ```powershell
-$env:SELENE_CORS_ORIGINS = "http://127.0.0.1:4173"
+$env:KHONSU_CORS_ORIGINS = "http://127.0.0.1:4173"
 python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
 ```
 
 On macOS/Linux:
 
 ```sh
-SELENE_CORS_ORIGINS=http://127.0.0.1:4173 python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
+KHONSU_CORS_ORIGINS=http://127.0.0.1:4173 python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
 ```
 
 The origin must match exactly. `localhost` and `127.0.0.1` are different

@@ -1,4 +1,4 @@
-# SELENE backend integration
+# KHONSU backend integration
 
 Implement the Python side of the landing site visibility API. Work in the team's backend branch. Keep changes to the Python backend, its dependencies, tests, and run instructions. The frontend teammate will connect React separately.
 
