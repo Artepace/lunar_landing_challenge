@@ -3,7 +3,10 @@ import rasterio as rs
 import pyproj as pp
 import matplotlib as mp
 import matplotlib.pyplot as plt
+
 from pathlib import Path
+
+# DEM lives in <repo>/data/raw/ (git-ignored; see data/terrain_README.md for download steps)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 path = REPO_ROOT / 'data' / 'raw' / 'LDEM_80S_80MPP_ADJ.TIF'
 
@@ -15,6 +18,7 @@ with rs.open(path) as src:
     print('Nodata:', src.nodata) # Values used for heights outside valid map area
     map_crs = src.crs
     bounds = src.bounds
+    res = src.res[0]
     z = src.read(1, masked=True) # Reads elevation band (masked argument hides 'nodata' pixels)
 
 print()

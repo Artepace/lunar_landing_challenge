@@ -1,4 +1,3 @@
-import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -12,6 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / 'src' / 'Ephemeris'))
 
 from Position_and_zenith_compilation import get_table, read_time # Person 1's Horizons code
+from lunar_sites import SITES       # shared site list
+from horizon_mask import horizon_mask
 
 
 SUN_RADIUS_DEG = 0.267 # apparent radius of the Sun's disc seen from the Moon
@@ -21,8 +22,6 @@ START = '2026-11-01 00:00'
 STOP = '2026-12-01 00:00'
 STEP_MINUTES = 30
 
-# Horizon masks saved by horizon_mask.py (loading these avoids loading the DEMs again)
-MASK_FOLDER = REPO_ROOT / 'data' / 'masks' # written by horizon_mask.py
 
 
 # Sun azimuth/elevation at a site, fetched with Person 1's Horizons code (get_table, read_time)
@@ -44,18 +43,6 @@ def sun_positions(lat, lon, start, stop, step_minutes):
     az = np.array([float(r[az_col]) for r in rows]) % 360             # clockwise from local north
     el = np.array([float(r[el_col]) for r in rows])
     return times, az, el
-
-
-# Read every saved horizon mask (one JSON file per site)
-def load_all_masks():
-    files = sorted(MASK_FOLDER.glob('*.json'))
-    if not files:
-        raise FileNotFoundError(f'No masks in {MASK_FOLDER}. Run horizon_mask.py first.')
-    masks = []
-    for f in files:
-        with open(f) as fh:
-            masks.append(json.load(fh))
-    return masks
 
 
 # Terrain elevation in any direction (looks up the mask between its 0.5 deg steps)
@@ -89,9 +76,8 @@ def hours_until_change(lit, step_hours):
 
 
 # Everything the power assessment needs for one site
-def analyse_site(m):
-    name, lat, lon = m['name'], m['lat'], m['lon']
-    az, mask = np.array(m['azimuth_deg']), np.array(m['horizon_deg'])
+def analyse_site(name, lat, lon):
+    az, mask, h_ground, truncated = horizon_mask(lat, lon)   # terrain skyline around the site
     t, s_az, s_el = sun_positions(lat, lon, START, STOP, STEP_MINUTES)
     hz = horizon_at(az, mask, s_az)             # terrain height in the Sun's direction, at every time
     frac = sun_visible_fraction(s_el, hz)       # how much of the Sun is visible, at every time
@@ -164,9 +150,8 @@ if __name__ == '__main__':
     print(f'Sunlight summary, {START} to {STOP} UTC, {STEP_MINUTES} min steps\n')
     print(f"{'Site':<20} {'Lit %':>6} {'Full %':>7} {'Longest shadow':>15} {'Longest sun':>12}  At start")
     results = {}
-    for m in load_all_masks():
-        name = m['name']
-        r = analyse_site(m)
+    for name, lon, lat in SITES:
+        r = analyse_site(name, lat, lon)
         results[name] = r
         if r['hours_to_change'] is None:
             start_note = 'lit, no sunset in range' if r['lit_at_start'] else 'dark, no sunrise in range'
