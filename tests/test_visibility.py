@@ -5,13 +5,13 @@ from unittest.mock import patch
 import numpy as np
 from fastapi.testclient import TestClient
 
-from src.Ephemeris.api import create_app
-from src.Ephemeris.Position_and_zenith_compilation import HorizonsTimeout
+from src.Ephemeris.Earth_sun_Position.api import create_app
+from src.Ephemeris.Earth_sun_Position.Position_and_zenith_compilation import HorizonsTimeout
 
 
 LANDING = '2026-11-14T12:00:00.000Z'
 REQUEST = {'latitude': -85.99, 'longitude': -0.125, 'landingTimeUtc': LANDING}
-EPHEMERIS = 'src.Ephemeris.Position_and_zenith_compilation.get_table'
+EPHEMERIS = 'src.Ephemeris.Earth_sun_Position.Position_and_zenith_compilation.get_table'
 TERRAIN = 'src.terrain.visibility'
 
 
@@ -96,7 +96,7 @@ class VisibilityTest(unittest.TestCase):
             self.assertEqual(self.client.post('/api/visibility', json=REQUEST).status_code, 502)
 
     def test_terrain_passes_coordinates_and_reports_coverage(self):
-        with patch('src.Ephemeris.api.surface_mesh', return_value=b'terrain') as build:
+        with patch('src.Ephemeris.Earth_sun_Position.api.surface_mesh', return_value=b'terrain') as build:
             response = self.client.get('/api/terrain', params={'latitude': -181, 'longitude': 0})
             self.assertEqual(response.status_code, 422)
             response = self.client.get('/api/terrain', params={'latitude': 0, 'longitude': 0})

@@ -14,7 +14,7 @@ STEP_MINUTES = 30
 # Sun azimuth/elevation at a site using the shared observer request and parser.
 def sun_positions(lat, lon, start, stop, step_minutes):
     if __package__:
-        from ..Ephemeris.Position_and_zenith_compilation import query_observer_directions
+        from ..Ephemeris.Earth_sun_Position.Position_and_zenith_compilation import query_observer_directions
     else:
         from Position_and_zenith_compilation import query_observer_directions
 
@@ -145,12 +145,12 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     if __package__:
-        from ..Ephemeris.lunar_sites import SITES
+        from ..Ephemeris.Earth_sun_Position.lunar_sites import SITES
     else:
         import sys
         from pathlib import Path
 
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Ephemeris'))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Ephemeris' / 'Earth_sun_Position'))
         from lunar_sites import SITES
 
     print(f'Sunlight summary, {START} to {STOP} UTC, {STEP_MINUTES} min steps\n')

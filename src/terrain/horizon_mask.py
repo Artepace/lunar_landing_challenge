@@ -3,11 +3,11 @@ from pathlib import Path
 import numpy as np
 import rasterio as rs
 if __package__:
-    from ..Ephemeris.lunar_sites import SITES
+    from ..Ephemeris.Earth_sun_Position.lunar_sites import SITES
     from .heights_map import z, bounds, R_moon, lonlat_to_xy, site_lat, site_lon, res, path
 else:
     import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Ephemeris'))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Ephemeris' / 'Earth_sun_Position'))
     from lunar_sites import SITES
     from heights_map import z, bounds, R_moon, lonlat_to_xy, site_lat, site_lon, res, path
 

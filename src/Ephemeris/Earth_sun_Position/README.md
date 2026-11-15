@@ -30,7 +30,7 @@ Install dependencies and start the server:
 
 ```sh
 python -m pip install -r requirements.txt
-python -m uvicorn src.Ephemeris.api:app --host 127.0.0.1 --port 8000
+python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
 ```
 
 Open <http://127.0.0.1:8000/docs> to try the endpoints. If the React build already
@@ -174,13 +174,13 @@ example, in Windows PowerShell:
 
 ```powershell
 $env:SELENE_CORS_ORIGINS = "http://127.0.0.1:4173"
-python -m uvicorn src.Ephemeris.api:app --host 127.0.0.1 --port 8000
+python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
 ```
 
 On macOS/Linux:
 
 ```sh
-SELENE_CORS_ORIGINS=http://127.0.0.1:4173 python -m uvicorn src.Ephemeris.api:app --host 127.0.0.1 --port 8000
+SELENE_CORS_ORIGINS=http://127.0.0.1:4173 python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
 ```
 
 The origin must match exactly. `localhost` and `127.0.0.1` are different
@@ -189,7 +189,7 @@ origins. Separate multiple allowed origins with commas.
 ## Keep using the CSV script
 
 ```sh
-python src/Ephemeris/Position_and_zenith_compilation.py
+python src/Ephemeris/Earth_sun_Position/Position_and_zenith_compilation.py
 ```
 
 This still runs the original batch export, using its editable date, step, and

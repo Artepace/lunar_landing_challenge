@@ -6,12 +6,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from starlette.routing import Mount
 
-from src.Ephemeris.api import create_app
+from src.Ephemeris.Earth_sun_Position.api import create_app
 
 
 class VercelEntrypointTest(unittest.TestCase):
     def test_api_service_does_not_mount_frontend_even_when_dist_exists(self):
-        with patch('src.Ephemeris.api.FRONTEND_DIST') as dist:
+        with patch('src.Ephemeris.Earth_sun_Position.api.FRONTEND_DIST') as dist:
             dist.__truediv__.return_value.is_file.return_value = True
             app = create_app(serve_frontend=False)
         self.assertFalse(any(isinstance(route, Mount) for route in app.routes))

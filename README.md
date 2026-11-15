@@ -18,10 +18,10 @@ From the repository root, create a Python environment and start the API:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-python -m uvicorn src.Ephemeris.api:app --host 127.0.0.1 --port 8000
+python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app --host 127.0.0.1 --port 8000
 ```
 
-For Windows activation and API examples, see the [backend guide](src/Ephemeris/README.md). To enable terrain-aware results, download the two maps described in the [terrain data guide](data/terrain_README.md) into `data/raw/`. The app labels results based on geometric visibility when terrain coverage is unavailable.
+For Windows activation and API examples, see the [backend guide](src/Ephemeris/Earth_sun_Position/README.md). To enable terrain-aware results, download the two maps described in the [terrain data guide](data/terrain_README.md) into `data/raw/`. The app labels results based on geometric visibility when terrain coverage is unavailable.
 
 In a second terminal, start the frontend:
 

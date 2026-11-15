@@ -1,4 +1,4 @@
-"""Run from the repository root: python -m uvicorn src.Ephemeris.api:app."""
+"""Run from the repository root: python -m uvicorn src.Ephemeris.Earth_sun_Position.api:app."""
 
 import asyncio
 import logging
@@ -22,14 +22,14 @@ from .Position_and_zenith_compilation import (
     utc_text,
 )
 from .lunar_sites import SITES
-from ..terrain.surface import surface_mesh
-from ..terrain.visibility import apply_horizon
+from ...terrain.surface import surface_mesh
+from ...terrain.visibility import apply_horizon
 
 
 STEP_MINUTES = 15
 WINDOW_HOURS = 72
 API_TIMEOUT_SECONDS = 65.0
-FRONTEND_DIST = Path(__file__).resolve().parents[1] / 'frontend' / 'dist'
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / 'frontend' / 'dist'
 logger = logging.getLogger(__name__)
 
 
