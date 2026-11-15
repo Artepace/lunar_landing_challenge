@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { earthPreviewRotation, rad, stations, type Body } from "./model";
+import {
+  CUSTOM_SITE_LIMITS,
+  clampCustomSite,
+  earthPreviewRotation,
+  rad,
+  stations,
+  type Body,
+} from "./model";
 import {
   createObjects,
   disposeObjects,
@@ -24,6 +31,7 @@ type Props = {
   directions?: SceneDirections;
   station: Station;
   command: { target: Body | "reset" };
+  onPick: (lat: number, lon: number) => void;
   onFacing: (facing: boolean) => void;
   onBackdrop: (canvas: HTMLCanvasElement | undefined) => void;
 };
@@ -37,6 +45,61 @@ const sky = (az: number, el: number, distance = previewSkyDistance) =>
     Math.sin(rad(el)),
     -Math.cos(rad(az)) * Math.cos(rad(el)),
   ).multiplyScalar(distance);
+
+// Editable coordinates in the landing site caption. A change is applied on
+// Enter or when the field loses focus; Escape restores the current site.
+function SiteCoordinates({
+  lat,
+  lon,
+  onChange,
+}: {
+  lat: number;
+  lon: number;
+  onChange: (lat: number, lon: number) => void;
+}) {
+  const [draft, setDraft] = useState({ lat: String(lat), lon: String(lon) });
+  useEffect(() => setDraft({ lat: String(lat), lon: String(lon) }), [lat, lon]);
+  const apply = () => {
+    const nextLat = draft.lat.trim() === "" ? NaN : Number(draft.lat);
+    const nextLon = draft.lon.trim() === "" ? NaN : Number(draft.lon);
+    if (!Number.isFinite(nextLat) || !Number.isFinite(nextLon)) {
+      setDraft({ lat: String(lat), lon: String(lon) });
+      return;
+    }
+    const next = clampCustomSite(nextLat, nextLon);
+    setDraft({ lat: String(next.latitude), lon: String(next.longitude) });
+    if (next.latitude !== lat || next.longitude !== lon)
+      onChange(next.latitude, next.longitude);
+  };
+  const field = (axis: "lat" | "lon", label: string) => {
+    const limits =
+      CUSTOM_SITE_LIMITS[axis === "lat" ? "latitude" : "longitude"];
+    return (
+      <input
+        type="number"
+        inputMode="decimal"
+        aria-label={`${label} in degrees, ${limits.min} to ${limits.max}`}
+        title={`${label}: ${limits.min}° to ${limits.max}°`}
+        min={limits.min}
+        max={limits.max}
+        step="any"
+        value={draft[axis]}
+        onChange={(event) => setDraft({ ...draft, [axis]: event.target.value })}
+        onBlur={apply}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+          if (event.key === "Escape")
+            setDraft({ lat: String(lat), lon: String(lon) });
+        }}
+      />
+    );
+  };
+  return (
+    <span className="site-coordinates">
+      {field("lat", "Latitude")}° N / {field("lon", "Longitude")}° E
+    </span>
+  );
+}
 
 export function LunarScene(props: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -516,7 +579,25 @@ export function LunarScene(props: Props) {
       drag.lastX = event.clientX;
       drag.lastY = event.clientY;
     };
-    const up = () => {
+    const up = (event: PointerEvent) => {
+      if (drag && !drag.moved && mode === "planner") {
+        const r = renderer.domElement.getBoundingClientRect();
+        ray.setFromCamera(
+          new THREE.Vector2(
+            (2 * (event.clientX - r.left)) / r.width - 1,
+            1 - (2 * (event.clientY - r.top)) / r.height,
+          ),
+          camera,
+        );
+        const hit = ray.intersectObject(moon, true)[0];
+        if (hit) {
+          const point = hit.point.normalize();
+          latest.current.onPick(
+            Math.asin(point.y) / rad(1),
+            Math.atan2(-point.z, point.x) / rad(1),
+          );
+        }
+      }
       drag = null;
     };
     const cancel = () => {
@@ -599,11 +680,13 @@ export function LunarScene(props: Props) {
           {message}
         </div>
       )}
-      <div className="scene-label" ref={siteLabel}>
+      <div className="scene-label site-label" ref={siteLabel}>
         LANDING SITE{" "}
-        <span>
-          {props.lat.toFixed(3)}° N / {props.lon.toFixed(3)}° E
-        </span>
+        <SiteCoordinates
+          lat={props.lat}
+          lon={props.lon}
+          onChange={props.onPick}
+        />
       </div>
       <div
         className="hidden-body-outline hidden-sun"

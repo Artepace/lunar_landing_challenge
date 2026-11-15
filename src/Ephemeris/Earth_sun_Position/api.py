@@ -22,6 +22,7 @@ from .Position_and_zenith_compilation import (
     utc_text,
 )
 from .lunar_sites import SITES
+from ..Satellite_position.api import router as satellite_router
 from ...terrain.surface import surface_mesh
 from ...terrain.visibility import apply_horizon
 
@@ -137,6 +138,8 @@ def create_app(*, serve_frontend=True):
             {"loc": list(item["loc"]), "msg": item["msg"], "type": item["type"]}
             for item in error.errors()
         ]})
+
+    app.include_router(satellite_router)
 
     @app.get("/api/sites", response_model=list[Site])
     def sites():

@@ -10,3 +10,20 @@ export function earthPreviewRotation(date: number) {
   const hours = (date - Date.UTC(2026, 10, 14, 12)) / 36e5;
   return (hours * Math.PI) / 12;
 }
+
+// Custom landing sites stay inside the south-polar band the app is built for.
+export const CUSTOM_SITE_LIMITS = {
+  latitude: { min: -89.9, max: -75 },
+  longitude: { min: -180, max: 180 },
+};
+export const CUSTOM_SITE_NAME = "Custom landing site";
+
+export function clampCustomSite(latitude: number, longitude: number) {
+  const { latitude: lat, longitude: lon } = CUSTOM_SITE_LIMITS;
+  const clamp = (value: number, min: number, max: number) =>
+    Number(Math.min(max, Math.max(min, value)).toFixed(4));
+  return {
+    latitude: clamp(latitude, lat.min, lat.max),
+    longitude: clamp(longitude, lon.min, lon.max),
+  };
+}

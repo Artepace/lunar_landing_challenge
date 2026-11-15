@@ -7,6 +7,19 @@ from pathlib import Path
 # Add more catalogue numbers to calculate several satellites in one run.
 SATELLITE_IDS = [25544]
 
+# Satellites offered by the KHONSU planner as a communications link
+# (GET /api/satellites). Each entry is (NORAD catalogue ID, display name).
+# TDRS are NASA's geostationary Tracking and Data Relay Satellites; the ISS
+# and Hubble are low-orbit geometry examples. None is a proposed lunar relay.
+AVAILABLE_SATELLITES = [
+    (27566, "TDRS 10"),
+    (39070, "TDRS 11"),
+    (39504, "TDRS 12"),
+    (42915, "TDRS 13"),
+    (25544, "ISS (ZARYA)"),
+    (20580, "Hubble Space Telescope"),
+]
+
 # None means start at the current UTC minute. To choose a time instead, use
 # a string such as "2026-11-15 12:00". Current orbital data is for nearby dates,
 # not for predicting a whole year. Historical dates need historical elements.
@@ -26,6 +39,6 @@ MIN_ELEVATION_DEG = 0.0    # Geometric elevation required for an access estimate
 MAX_EPOCH_DISTANCE_DAYS = 7.0
 
 # Paths are based on this script's location, not your terminal's current folder.
-PROJECT_FOLDER = Path(__file__).resolve().parents[2]
+PROJECT_FOLDER = Path(__file__).resolve().parents[3]
 CACHE_FOLDER = PROJECT_FOLDER / "data" / "satellite_cache"
 OUTPUT_FOLDER = PROJECT_FOLDER / "data" / "satellite_results"

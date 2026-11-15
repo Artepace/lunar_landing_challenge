@@ -35,6 +35,8 @@ Open [the explorer](http://127.0.0.1:4173). For a single-server build, run `npm 
 
 To use the standalone `node server.mjs` preview on port 4173, build first and run it alongside the Python API. Restart a preview started before the API proxy was added.
 
+In **Planner**, scroll below the Moon to the **Comms link** stage to set what the lander talks to. A ground station is the default. Ticking **Satellite** loads the list from `GET /api/satellites` (edit `AVAILABLE_SATELLITES` in `src/Ephemeris/Satellite_position/satellite_settings.py`), and choosing one sends it to `POST /api/satellite-link` with the site and landing time. The stage then shows Earth with the satellite and one orbit. Satellite orbits come from CelesTrak, so the server needs internet access, and landing dates must be within 7 days of the current orbital data. The first satellite request downloads about 19 MB of JPL reference files into `data/satellite_cache/`.
+
 Use **Planner** to select a site with the option wheel or by clicking the Moon, then choose the landing date and UTC time. **Orbit** and **Surface** share the 72-hour player and visibility forecast. Drag to change the view; hold Shift while scrolling to zoom. See `src/frontend/DESIGN-SOURCES.md` for data credits and limitations.
 
 ## Deploy to Vercel

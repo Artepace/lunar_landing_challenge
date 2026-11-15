@@ -5,21 +5,31 @@ import { Chrome } from "./Chrome";
 import { LunarScene, type Station, type View } from "./LunarScene";
 import { ScenePlayer } from "./ScenePlayer";
 import { OrbitScene } from "./OrbitScene";
+import { CommsLinkStage, type CommsMode } from "./CommsLink";
 import { OrbitBackdrop } from "./NoiseBackground";
 import { GlassCalendar } from "./components/ui/glass-calendar";
 import { OptionWheel } from "./OptionWheel";
 import { SpecularButton } from "./SpecularButton";
 import { PlannerSymbol, OrbitSymbol, SurfaceSymbol } from "./Symbols";
 import GooeyNav from "./reactbits/GooeyNav";
-import { stations, type Body } from "./model";
+import {
+  CUSTOM_SITE_NAME,
+  clampCustomSite,
+  stations,
+  type Body,
+} from "./model";
 import {
   directionsAt,
   HOUR_MS,
+  loadSatelliteLink,
+  loadSatellites,
   loadSites,
   loadVisibility,
   visibilityWindows,
   WINDOW_HOURS,
   type LandingSite,
+  type SatelliteLink,
+  type SatelliteOption,
   type Visibility,
 } from "./visibility";
 import "./styles.css";
@@ -82,6 +92,14 @@ function App() {
   const [command, setCommand] = useState<{ target: Body | "reset" }>({
     target: "reset",
   });
+  const [commsMode, setCommsMode] = useState<CommsMode>("ground");
+  const [satellites, setSatellites] = useState<SatelliteOption[]>();
+  const [satellitesError, setSatellitesError] = useState<string>();
+  const [satelliteRetry, setSatelliteRetry] = useState(0);
+  const [satelliteId, setSatelliteId] = useState<number>();
+  const [linkResult, setLinkResult] = useState<
+    { key: string; link: SatelliteLink } | { key: string; error: string }
+  >();
   const form = useRef<HTMLFormElement>(null);
   const explore = useRef<HTMLElement>(null);
   const { lat, lon, base } = site;
@@ -125,6 +143,42 @@ function App() {
     );
     return () => controller.abort();
   }, [lat, lon, base, key]);
+  // The satellite list is requested once the satellite link is ticked.
+  const wantsSatellites = commsMode === "satellite";
+  useEffect(() => {
+    if (!wantsSatellites || satellites) return;
+    const controller = new AbortController();
+    setSatellitesError(undefined);
+    loadSatellites(controller.signal).then(setSatellites, (error: Error) => {
+      if (!controller.signal.aborted) setSatellitesError(error.message);
+    });
+    return () => controller.abort();
+  }, [wantsSatellites, satellites, satelliteRetry]);
+  // The chosen satellite goes back to the API with the site and landing time.
+  const linkKey =
+    wantsSatellites && satelliteId !== undefined
+      ? `${lat}/${lon}/${base}/${satelliteId}`
+      : undefined;
+  useEffect(() => {
+    if (!linkKey || satelliteId === undefined) return;
+    const controller = new AbortController();
+    loadSatelliteLink(lat, lon, base, satelliteId, controller.signal).then(
+      (link) => {
+        if (!controller.signal.aborted) setLinkResult({ key: linkKey, link });
+      },
+      (error: Error) => {
+        if (!controller.signal.aborted)
+          setLinkResult({ key: linkKey, error: error.message });
+      },
+    );
+    return () => controller.abort();
+  }, [lat, lon, base, satelliteId, linkKey]);
+  const currentLink = linkResult?.key === linkKey ? linkResult : undefined;
+  // The wheel always shows a selection, so start on the first satellite.
+  useEffect(() => {
+    if (wantsSatellites && satellites && satelliteId === undefined)
+      setSatelliteId(satellites[0].id);
+  }, [wantsSatellites, satellites, satelliteId]);
   useEffect(() => {
     if (!playing || view === "planner") return;
     const timer = window.setInterval(
@@ -143,7 +197,7 @@ function App() {
     nextDate: string,
   ) => {
     setSite({
-      name: nextPreset,
+      name: nextPreset || CUSTOM_SITE_NAME,
       lat,
       lon,
       base: Date.parse(nextDate + "Z"),
@@ -165,7 +219,25 @@ function App() {
       commit(preset, Number(latitude), Number(longitude), date);
     setView("surface");
   };
+  const validDate = () =>
+    Number.isFinite(Date.parse(date + "Z"))
+      ? date
+      : new Date(site.base).toISOString().slice(0, 16);
+  // A custom site comes from a click on the Moon or the caption's coordinates.
+  const setCustomSite = (pickedLat: number, pickedLon: number) => {
+    const next = clampCustomSite(pickedLat, pickedLon);
+    setPreset("");
+    setLat(String(next.latitude));
+    setLon(String(next.longitude));
+    commit("", next.latitude, next.longitude, validDate());
+  };
   const selectPreset = (selected: string) => {
+    if (!selected) {
+      // The wheel also reports the custom entry after a pick selects it.
+      if (!preset) return;
+      setCustomSite(Number(latitude), Number(longitude));
+      return;
+    }
     setPreset(selected);
     const next = sites.find(({ name }) => name === selected);
     if (!next) return;
@@ -242,7 +314,7 @@ function App() {
             station={station}
             command={command}
             onFacing={setFacing}
-
+            onPick={setCustomSite}
           />
         )}
         <div className="hero-copy" hidden={view !== "planner"}>
@@ -263,7 +335,10 @@ function App() {
           <OptionWheel
             label="Landing site preset"
             value={preset}
-            options={sites.map(({ name }) => ({ value: name, label: name }))}
+            options={[
+              { value: "", label: CUSTOM_SITE_NAME },
+              ...sites.map(({ name }) => ({ value: name, label: name })),
+            ]}
             onChange={selectPreset}
           />
           {sitesFailed && (
@@ -308,6 +383,9 @@ function App() {
               Take me to the surface
             </SpecularButton>
           </form>
+          <div className="panel-footer">
+            <span className="crosshair">⌖</span>Or click anywhere on the Moon
+          </div>
         </aside>
         <div className="surface-heading" hidden={view !== "surface"}>
           <span className="eyebrow">YOU ARE HERE</span>
@@ -350,6 +428,29 @@ function App() {
           YOUR NEXT WINDOWS <span>↓</span>
         </a>
       </section>
+      {view === "planner" && (
+        <CommsLinkStage
+          mode={commsMode}
+          onMode={setCommsMode}
+          station={station}
+          stationLabels={stationLabels}
+          onStation={setStation}
+          satellites={satellites}
+          satellitesError={satellitesError}
+          onRetrySatellites={() => setSatelliteRetry((value) => value + 1)}
+          satelliteId={satelliteId}
+          onSatellite={setSatelliteId}
+          link={
+            currentLink && "link" in currentLink ? currentLink.link : undefined
+          }
+          linkError={
+            currentLink && "error" in currentLink
+              ? currentLink.error
+              : undefined
+          }
+          time={base}
+        />
+      )}
       <section className="windows" id="windows" hidden={view === "planner"}>
         <div className="section-intro">
           <h2>

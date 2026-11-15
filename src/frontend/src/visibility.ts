@@ -198,3 +198,95 @@ export function visibilityWindows(series: Visibility, body: Body) {
 }
 
 export type SceneDirections = ReturnType<typeof directionsAt>;
+
+export type SatelliteOption = { id: number; name: string };
+export type SatelliteLink = {
+  satellite: SatelliteOption & { epochUtc: string };
+  landingTimeUtc: string;
+  stepMinutes: number;
+  samples: {
+    utc: string;
+    azimuthDeg: number;
+    elevationDeg: number;
+    access: boolean;
+  }[];
+  accessFraction: number;
+  orbit: {
+    periodMinutes: number;
+    positionsKm: [number, number, number][];
+    earthRotationDeg: number;
+    moonDirection: [number, number, number];
+  };
+};
+
+export async function loadSatellites(
+  signal: AbortSignal,
+): Promise<SatelliteOption[]> {
+  const satellites = await request<SatelliteOption[]>("satellites", { signal });
+  if (
+    !Array.isArray(satellites) ||
+    satellites.length === 0 ||
+    !satellites.every(
+      (satellite) =>
+        Number.isInteger(satellite?.id) && typeof satellite.name === "string",
+    )
+  ) {
+    throw new Error("The satellite list is unavailable.");
+  }
+  return satellites;
+}
+
+// Sends the chosen satellite back to the API with the landing site and time.
+export async function loadSatelliteLink(
+  latitude: number,
+  longitude: number,
+  base: number,
+  satelliteId: number,
+  signal: AbortSignal,
+): Promise<SatelliteLink> {
+  let response: Response;
+  try {
+    response = await fetch(apiUrl("satellite-link"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        latitude,
+        longitude,
+        landingTimeUtc: new Date(base).toISOString(),
+        satelliteId,
+      }),
+      signal,
+    });
+  } catch {
+    throw new Error("Could not reach the KHONSU API.");
+  }
+  if (!response.headers.get("content-type")?.includes("application/json"))
+    throw new Error("Could not reach the KHONSU API.");
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      response.status === 409 && typeof result?.detail === "string"
+        ? result.detail
+        : response.status === 504
+          ? "The satellite calculation timed out."
+          : "Satellite orbit data is unavailable.",
+    );
+  }
+  if (
+    result?.satellite?.id !== satelliteId ||
+    Date.parse(result.landingTimeUtc) !== base ||
+    !Array.isArray(result.samples) ||
+    result.samples.length === 0 ||
+    !Array.isArray(result.orbit?.positionsKm) ||
+    result.orbit.positionsKm.length < 3 ||
+    !result.orbit.positionsKm.every(
+      (point: unknown) =>
+        Array.isArray(point) &&
+        point.length === 3 &&
+        point.every(Number.isFinite),
+    )
+  ) {
+    throw new Error("Satellite orbit data is unavailable.");
+  }
+  return result;
+}
