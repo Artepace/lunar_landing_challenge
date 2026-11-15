@@ -37,7 +37,7 @@ export function OptionWheel({
           tilt={6}
           blur={1.5}
           fade={0.25}
-          smoothing={200}
+          smoothing={50}
           inset={32}
           loop={options.length > 1}
           draggable

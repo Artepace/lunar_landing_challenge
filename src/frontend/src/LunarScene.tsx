@@ -24,7 +24,6 @@ type Props = {
   directions?: SceneDirections;
   station: Station;
   command: { target: Body | "reset" };
-  onPick: (lat: number, lon: number) => void;
   onFacing: (facing: boolean) => void;
   onBackdrop: (canvas: HTMLCanvasElement | undefined) => void;
 };
@@ -517,25 +516,7 @@ export function LunarScene(props: Props) {
       drag.lastX = event.clientX;
       drag.lastY = event.clientY;
     };
-    const up = (event: PointerEvent) => {
-      if (drag && !drag.moved && mode === "planner") {
-        const r = renderer.domElement.getBoundingClientRect();
-        ray.setFromCamera(
-          new THREE.Vector2(
-            (2 * (event.clientX - r.left)) / r.width - 1,
-            1 - (2 * (event.clientY - r.top)) / r.height,
-          ),
-          camera,
-        );
-        const hit = ray.intersectObject(moon, true)[0];
-        if (hit) {
-          const point = hit.point.normalize();
-          latest.current.onPick(
-            Math.asin(point.y) / rad(1),
-            Math.atan2(-point.z, point.x) / rad(1),
-          );
-        }
-      }
+    const up = () => {
       drag = null;
     };
     const cancel = () => {

@@ -25,12 +25,12 @@ import {
 import "./styles.css";
 import "./khonsu-theme.css";
 
-const initialDate = "2026-11-14T12:00";
+const initialDate = "2026-11-15T14:00";
 const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
 const initialSite = {
-  name: "Custom landing site",
-  lat: -89.5,
-  lon: 30,
+  name: "Peak near Cabeus B",
+  lat: -83.661,
+  lon: -69.014,
   base: Date.parse(initialDate + "Z"),
 };
 const bodies: Body[] = ["sun", "earth"];
@@ -66,7 +66,7 @@ function App() {
     () => !matchMedia(reducedMotionQuery).matches,
   );
   const [site, setSite] = useState(initialSite);
-  const [preset, setPreset] = useState("");
+  const [preset, setPreset] = useState(initialSite.name);
   const [sites, setSites] = useState<LandingSite[]>([]);
   const [sitesFailed, setSitesFailed] = useState(false);
   const [siteRetry, setSiteRetry] = useState(0);
@@ -143,7 +143,7 @@ function App() {
     nextDate: string,
   ) => {
     setSite({
-      name: nextPreset || "Custom landing site",
+      name: nextPreset,
       lat,
       lon,
       base: Date.parse(nextDate + "Z"),
@@ -242,22 +242,7 @@ function App() {
             station={station}
             command={command}
             onFacing={setFacing}
-            onPick={(lat, lon) => {
-              const pickedLat = lat.toFixed(4),
-                pickedLon = lon.toFixed(4);
-              setPreset("");
-              setLat(pickedLat);
-              setLon(pickedLon);
-              const validDate = Number.isFinite(Date.parse(date + "Z"));
-              commit(
-                "",
-                Number(pickedLat),
-                Number(pickedLon),
-                validDate
-                  ? date
-                  : new Date(site.base).toISOString().slice(0, 16),
-              );
-            }}
+
           />
         )}
         <div className="hero-copy" hidden={view !== "planner"}>
@@ -278,10 +263,7 @@ function App() {
           <OptionWheel
             label="Landing site preset"
             value={preset}
-            options={[
-              { value: "", label: "Custom landing site" },
-              ...sites.map(({ name }) => ({ value: name, label: name })),
-            ]}
+            options={sites.map(({ name }) => ({ value: name, label: name }))}
             onChange={selectPreset}
           />
           {sitesFailed && (
@@ -326,9 +308,6 @@ function App() {
               Take me to the surface
             </SpecularButton>
           </form>
-          <div className="panel-footer">
-            <span className="crosshair">⌖</span>Or click anywhere on the Moon
-          </div>
         </aside>
         <div className="surface-heading" hidden={view !== "surface"}>
           <span className="eyebrow">YOU ARE HERE</span>
