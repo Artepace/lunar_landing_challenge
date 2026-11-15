@@ -26,6 +26,8 @@ export const HOUR_MS = 3_600_000;
 export const WINDOW_HOURS = 72;
 
 function apiUrl(path: string) {
+  // On Vercel, keep VITE_API_BASE_URL unset: the browser uses public /api/*
+  // rewrites on this origin. Runtime service-binding URLs are not browser URLs.
   const base = (import.meta.env?.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
   return `${base}/api/${path}`;
 }

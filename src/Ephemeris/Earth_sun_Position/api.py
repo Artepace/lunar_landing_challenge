@@ -116,7 +116,7 @@ def _visibility_with_horizon(request, start, stop):
             "samples": samples, "horizon": horizon}
 
 
-def create_app():
+def create_app(*, serve_frontend=True):
     app = FastAPI(title="SELENE visibility API", version="1.0.0")
 
     # Same-origin requests need no CORS settings. For a separate React server,
@@ -178,7 +178,7 @@ def create_app():
         except HorizonsError as error:
             raise HTTPException(status_code=502, detail="JPL Horizons returned unavailable or invalid data.") from error
 
-    if (FRONTEND_DIST / 'index.html').is_file():
+    if serve_frontend and (FRONTEND_DIST / 'index.html').is_file():
         app.mount('/', StaticFiles(directory=FRONTEND_DIST, html=True), name='frontend')
 
     return app

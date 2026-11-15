@@ -1,0 +1,2 @@
+data/raw/LDEM_80S_80MPP_ADJ.TIF filter=lfs diff=lfs merge=lfs -text
+data/raw/LDEM_60S_240MPP_ADJ.TIF filter=lfs diff=lfs merge=lfs -text

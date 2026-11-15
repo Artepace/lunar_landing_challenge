@@ -35,7 +35,28 @@ Open [the explorer](http://127.0.0.1:4173). For a single-server build, run `npm 
 
 To use the standalone `node server.mjs` preview on port 4173, build first and run it alongside the Python API. Restart a preview started before the API proxy was added.
 
-Select a preset, click the Moon, or enter coordinates. Choose **Take me to the surface**, then drag to look around. The Surface view renders measured LOLA terrain where the maps cover the site and its surroundings. Scroll down for the time slider, rise/set readouts and station selector. Return to **Orbit** to choose another site. See `src/frontend/DESIGN-SOURCES.md` for data credits and limitations.
+Use **Planner** to select a site with the option wheel or by clicking the Moon, then choose the landing date and UTC time. **Orbit** and **Surface** share the 72-hour player and visibility forecast. Drag to change the view; hold Shift while scrolling to zoom. See `src/frontend/DESIGN-SOURCES.md` for data credits and limitations.
+
+## Deploy to Vercel
+
+The root [`vercel.json`](vercel.json) defines one project with two independently built services. Import the repository with project root `.` (not `src/frontend`). Keep build/runtime overrides in each service, not at the top level or as a frontend-only project override.
+
+- `app`: FastAPI at the repository root, entrypoint `app:app`. Public requests under `/api/` retain their prefix and reach the existing `/api/sites`, `/api/visibility`, and `/api/terrain` handlers. The function allows 120 seconds, above the API's 65-second calculation deadline. Python function packaging excludes frontend assets and includes both Git LFS terrain maps. The API build verifies their checksums.
+- `frontend`: Vite in `src/frontend`, built with `npm run build` to `dist`. All other public paths go here.
+- No internal-only services or service bindings are configured. API calls originate in the browser, not a frontend function. Leave `VITE_API_BASE_URL` unset so they use same-origin `/api/*`. Binding URLs are runtime-only and must not be embedded into a Vite build. The localhost URLs in `vite.config.ts` and `server.mjs` are only for the standalone local development/preview workflow; they are not production routing.
+- `app.py` intentionally disables FastAPI's local static-site mount, so a leftover frontend build cannot interfere with the separate Vite service. The existing Uvicorn entrypoint still supports the local single-server build.
+
+With a current Vercel CLI that supports services, test from the repository root:
+
+```sh
+vercel dev --local
+```
+
+Check the frontend at the printed URL and `/api/sites` on that same origin. Stop with Ctrl+C. To test with your Vercel project configuration instead, use `vercel dev`. For cloud deployment, connect this GitHub repository in Vercel or use `vercel` from the repository root. No deployment is performed by adding these files.
+
+**Terrain data:** the two required LOLA maps are tracked with Git LFS. Enable Git LFS downloads in the Vercel project's Git settings, then redeploy. The API build fails clearly if it receives pointer files instead of map data. The maps total about 408 MB before Python dependencies, so use Fluid compute with [Large Functions support](https://vercel.com/changelog/vercel-functions-can-now-be-up-to-5-gb-in-package-size); existing projects may need `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` in Vercel environment variables. Nothing sets that project option automatically. A full cloud build must verify the final Linux bundle size and runtime memory use. See [terrain setup](data/terrain_README.md) for local checkout and checksum verification. Terrain outside the maps' coverage still uses the existing fallback. JPL Horizons requires outbound network access at runtime.
+
+References: [Vercel services](https://vercel.com/docs/services), [routing](https://vercel.com/docs/services/routing), [runtime-only bindings](https://vercel.com/docs/services/bindings).
 
 Run `npm test` in `src/frontend` for timeline tests and `python -m unittest discover -s tests -v` from the repository root for API tests after installing `requirements-dev.txt`.
 

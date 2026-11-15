@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "app": {
+      "root": ".",
+      "framework": "fastapi",
+      "entrypoint": "app:app",
+      "functions": {
+        "app.py": {
+          "maxDuration": 120,
+          "excludeFiles": "{src/frontend/**,.venv/**,tests/**}",
+          "includeFiles": "data/raw/{LDEM_80S_80MPP_ADJ.TIF,LDEM_60S_240MPP_ADJ.TIF}"
+        }
+      },
+      "buildCommand": "python scripts/check_terrain_data.py"
+    },
+    "frontend": {
+      "root": "src/frontend",
+      "framework": "vite",
+      "buildCommand": "npm run build",
+      "outputDirectory": "dist"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "app"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
+}

@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
-/data/raw/
+/data/raw/*
+!/data/raw/LDEM_80S_80MPP_ADJ.TIF
+!/data/raw/LDEM_60S_240MPP_ADJ.TIF
 __pycache__/
 .venv/
+
+.vercel/
