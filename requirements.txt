@@ -1,0 +1,7 @@
+numpy
+rasterio
+pyproj
+matplotlib
+fastapi>=0.115,<1
+pydantic>=2,<3
+uvicorn>=0.30,<1

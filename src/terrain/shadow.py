@@ -1,0 +1,172 @@
+from datetime import datetime, timedelta
+
+import numpy as np
+
+SUN_RADIUS_DEG = 0.267 # apparent radius of the Sun's disc seen from the Moon
+
+# Settings: date range and time step (UTC)
+START = '2026-11-01 00:00'
+STOP = '2026-12-01 00:00'
+STEP_MINUTES = 30
+
+
+
+# Sun azimuth/elevation at a site using the shared observer request and parser.
+def sun_positions(lat, lon, start, stop, step_minutes):
+    if __package__:
+        from ..Ephemeris.Position_and_zenith_compilation import query_observer_directions
+    else:
+        from Position_and_zenith_compilation import query_observer_directions
+
+    readings = query_observer_directions(
+        latitude=lat, longitude=lon, body_code='10',
+        start_utc=datetime.fromisoformat(start), stop_utc=datetime.fromisoformat(stop),
+        step_minutes=step_minutes,
+    )
+    times = np.array([datetime.fromisoformat(row['utc'].removesuffix('Z')) for row in readings])
+    az = np.array([row['azimuthDeg'] for row in readings])
+    el = np.array([row['elevationDeg'] for row in readings])
+    return times, az, el
+
+
+# Terrain elevation in any direction (looks up the mask between its 0.5 deg steps)
+def horizon_at(az_grid, mask, az_query):
+    return np.interp(az_query, az_grid, mask, period=360) # period=360 so 359.9 deg wraps to 0 deg
+
+
+# Fraction of the Sun's disc above the terrain (0 = hidden, 1 = fully visible)
+def sun_visible_fraction(sun_el, horizon_el):
+    x = np.clip((sun_el - horizon_el) / SUN_RADIUS_DEG, -1, 1) # disc centre above the ridge, in Sun radii
+    return 1 - (np.arccos(x) - x * np.sqrt(1 - x**2)) / np.pi  # area of a circle above a straight line
+
+
+# Longest run of consecutive True values: (length in hours, start index, end index)
+def longest_run(flags, step_hours):
+    longest = current = 0
+    best_start = best_end = None
+    for i, f in enumerate(flags):
+        current = current + 1 if f else 0
+        if current > longest:
+            longest = current
+            best_end = i
+            best_start = i - current + 1
+    return longest * step_hours, best_start, best_end
+
+
+# Hours from the first timestep until the state changes (sunset if lit, sunrise if dark)
+def hours_until_change(lit, step_hours):
+    changes = np.nonzero(lit != lit[0])[0]
+    return changes[0] * step_hours if len(changes) else None # None = no change in the date range
+
+
+# Everything the power assessment needs for one site
+def analyse_site(name, lat, lon):
+    if __package__:
+        from .horizon_mask import horizon_mask
+    else:
+        from horizon_mask import horizon_mask
+
+    az, mask, h_ground, truncated = horizon_mask(lat, lon)   # terrain skyline around the site
+    t, s_az, s_el = sun_positions(lat, lon, START, STOP, STEP_MINUTES)
+    hz = horizon_at(az, mask, s_az)             # terrain height in the Sun's direction, at every time
+    frac = sun_visible_fraction(s_el, hz)       # how much of the Sun is visible, at every time
+    lit = frac > 0
+    step_h = STEP_MINUTES / 60
+    return {'name': name, 'times': t, 'sun_az': s_az, 'sun_el': s_el, 'horizon_el': hz,
+            'fraction': frac, 'lit': lit, 'az': az, 'mask': mask,
+            'pct_lit': 100 * lit.mean(),
+            'pct_full': 100 * (frac >= 0.999).mean(),
+            'longest_shadow': longest_run(~lit, step_h),   # (hours, start index, end index)
+            'longest_sun_h': longest_run(lit, step_h)[0],
+            'lit_at_start': bool(lit[0]),
+            'hours_to_change': hours_until_change(lit, step_h)}
+
+
+# Lit vs shadow over time, drawn on a given set of axes
+def plot_timeline(r, ax):
+    import matplotlib.dates as mdates
+
+    lit = r['lit']
+    ax.plot(r['times'], r['sun_el'], color='orange', lw=1, label='Sun elevation')
+    ax.plot(r['times'], r['horizon_el'], color='dimgray', lw=1, label="Terrain in the Sun's direction")
+    ax.fill_between(r['times'], -90, 90, where=~lit, color='tab:blue', alpha=0.15, label='In shadow')
+    ax.set_ylim(min(r['horizon_el'].min(), r['sun_el'].min()) - 0.5, max(r['horizon_el'].max(), r['sun_el'].max()) + 0.5)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+    ax.tick_params(axis='x', labelsize=8)
+    ax.set_ylabel('Elevation (°)', fontsize=8)
+    ax.set_title(f"{r['name']}  ({r['pct_lit']:.0f}% lit)", fontsize=10)
+
+
+# Figure: lit vs shadow timeline for every site
+def plot_all_timelines(results):
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(3, 3, figsize=(16, 10), sharex=True)
+    for r, ax in zip(results.values(), axes.flat):
+        plot_timeline(r, ax)
+    axes.flat[0].legend(fontsize=7, loc='upper right')
+    fig.suptitle(f'Lit vs shadow over time, {START[:10]} to {STOP[:10]} (UTC)')
+    fig.tight_layout()
+
+
+# Figure: table of every site's longest continuous shadow
+def plot_shadow_table(results):
+    import matplotlib.pyplot as plt
+
+    rows = []
+    for r in sorted(results.values(), key=lambda r: r['longest_shadow'][0]): # shortest shadow first
+        hours, i0, i1 = r['longest_shadow']
+        if i0 is None:
+            rows.append([r['name'], f"{r['pct_lit']:.0f}", '0', '0', '-', '-'])
+            continue
+        t_start = r['times'][i0].strftime('%d %b %H:%M')
+        t_end = (r['times'][i1] + timedelta(minutes=STEP_MINUTES)).strftime('%d %b %H:%M')
+        rows.append([r['name'], f"{r['pct_lit']:.0f}", f'{hours:.1f}', f'{hours / 24:.1f}', t_start, t_end])
+
+    fig, ax = plt.subplots(figsize=(11, 4))
+    ax.axis('off')
+    table = ax.table(cellText=rows,
+                     colLabels=['Site', 'Lit (%)', 'Longest shadow (h)', 'Longest shadow (days)',
+                                'Shadow starts (UTC)', 'Shadow ends (UTC)'],
+                     loc='center', cellLoc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 1.6)
+    for col in range(6):
+        table[0, col].set_facecolor('#d9e2f3')
+        table[0, col].set_text_props(weight='bold')
+    ax.set_title(f'Longest continuous shadow per site, {START[:10]} to {STOP[:10]} (UTC)', pad=12)
+    ax.text(0.5, 0.02, 'A shadow that starts at the first time step or ends at the last may continue beyond the date range.',
+            transform=ax.transAxes, ha='center', fontsize=8, style='italic')
+    fig.tight_layout()
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+    if __package__:
+        from ..Ephemeris.lunar_sites import SITES
+    else:
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'Ephemeris'))
+        from lunar_sites import SITES
+
+    print(f'Sunlight summary, {START} to {STOP} UTC, {STEP_MINUTES} min steps\n')
+    print(f"{'Site':<20} {'Lit %':>6} {'Full %':>7} {'Longest shadow':>15} {'Longest sun':>12}  At start")
+    results = {}
+    for name, lon, lat in SITES:
+        r = analyse_site(name, lat, lon)
+        results[name] = r
+        if r['hours_to_change'] is None:
+            start_note = 'lit, no sunset in range' if r['lit_at_start'] else 'dark, no sunrise in range'
+        elif r['lit_at_start']:
+            start_note = f"lit, sunset in {r['hours_to_change']:.1f} h"
+        else:
+            start_note = f"dark, sunrise in {r['hours_to_change']:.1f} h"
+        print(f"{name:<20} {r['pct_lit']:6.0f} {r['pct_full']:7.0f} {r['longest_shadow'][0]:13.1f} h {r['longest_sun_h']:10.1f} h  {start_note}")
+
+    plot_all_timelines(results)
+    plot_shadow_table(results)
+    plt.show()
